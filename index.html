@@ -46,7 +46,7 @@ p{margin:0 0 12px;max-width:68ch}
 .card:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--deep);outline-offset:3px}
 .card .ph{aspect-ratio:4/3;background:var(--panel);overflow:hidden;display:grid;grid-template-columns:repeat(var(--n,1),minmax(0,1fr));gap:2px}
 .card .ph img{width:100%;height:100%;object-fit:cover}
-.card .ph img[src*="explorer"]{object-position:left top}
+.card .ph img[src*="explorer"],.card .ph img[src*="simulator"]{object-position:left top}
 .card .ph svg{width:100%;height:100%}
 .card .tx{padding:16px 18px 18px;display:flex;flex-direction:column;gap:6px;flex:1}
 .meta{font-size:14px;color:var(--soft)}
@@ -166,6 +166,7 @@ figcaption{font-size:13px;color:var(--soft);margin-top:6px}
 const FHS = 'protein-search/';
 const EXP = 'protein-explorer/';
 const QDX = 'quantum-dot-explorer/';
+const MISX = 'mis-cv-simulator/';
 
 
 const items = [
@@ -188,11 +189,12 @@ const items = [
  {id:'homology', kind:'proj', feat:true, title:'Faster Homology Search', org:'Computational biology project', date:'2026',
   sum:'Made a protein similarity search 45× faster with identical results, and 191× faster with a BLAST-style prefilter that keeps 98% of the hits. Includes two live pages you can use.',
   ph:[['fhs-results','Results page'],['explorer-search','Protein Search Explorer']]},
- {id:'mis', kind:'proj', title:'Thin-Film Device Fabrication & Characterization', org:'Nanotechnology Labs', date:'2026',
-  sum:'Fabrication of MIS capacitors from bare wafer through electrical testing, with characterization of the deposited films and finished devices.',
+ {id:'mis', kind:'proj', demo:true, title:'MIS Capacitors: Fabrication & C–V Simulator', org:'Nanotechnology Labs and interactive device model', date:'2026',
+  sum:'Fabricated and characterized MIS capacitors in the laboratory, then built an interactive simulator of the capacitance–voltage curve measured on the probe station.',
   b:['Fabricated MIS devices/capacitors using PECVD, UV photolithography, RIE, Al sputtering/PVD and wet etching, carrying devices through multi-step fabrication to electrical testing.','Characterized films and devices using ellipsometry, profilometry, four-point probe, SEM and C-V/I-V testing.','Used RIE for patterned dielectric etch and compared profilometry and ellipsometry measurements to investigate process and measurement variation.'],
   tools:'PECVD, photolithography, RIE, sputtering, wet etch, ellipsometry, profilometry, four-point probe, C-V/I-V',
-  ph:[['mis-wafer','Finished MIS capacitor wafer'],['mis-probe-station','Probe station used for electrical testing'],['mis-probe-tips','Probe tips landed on device contact pads, viewed on the microscope monitor',1]]},
+  labph:[['mis-wafer','Finished MIS capacitor wafer'],['mis-probe-station','Probe station used for electrical testing'],['mis-probe-tips','Probe tips landed on device contact pads, viewed on the microscope monitor',1]],
+  ph:[['mis-wafer','Finished MIS capacitor wafer'],['mis-simulator','MIS Capacitor C–V Simulator']]},
  {id:'qd', kind:'proj', demo:true, title:'Quantum Dots: Lab Synthesis & Colour Explorer', org:'Nanomaterials Lab and interactive physics model', date:'2026',
   sum:'Synthesized colloidal quantum dots in the nanomaterials laboratory, then built an interactive model that predicts their emission colour from particle size.',
   ph:[['qd-uv','Quantum-dot samples fluorescing under UV excitation'],['qd-explorer','Quantum Dot Colour Explorer']]}
@@ -276,6 +278,35 @@ const homology = () => `
 <div class="refs">${papers.map(([a, u, t, w]) => `<div><a href="${u}">${a}</a> ${t}<span>${w}</span></div>`).join('')}</div>
 <p class="note" style="margin-top:22px">Built with an AI coding agent that I directed: I set the goal and metric, chose the methods from the papers, and reran and checked the results. Benchmarks ran on a 2-core cloud machine.</p>`;
 
+const misPage = it => `
+<div class="meta">Project · 2026 · Microfabrication laboratory and interactive model</div>
+<h1 style="font-size:clamp(32px,4.2vw,48px);margin-top:6px;max-width:24ch">MIS Capacitors: Fabrication &amp; C–V Simulator</h1>
+<p class="lede" style="font-size:18px;color:var(--soft);margin:14px 0 22px;max-width:72ch">A metal–insulator–semiconductor (MIS) capacitor is the gate stack at the heart of every MOSFET, and its capacitance–voltage (C–V) curve is the standard first test after fabrication. This project pairs fabricating and testing MIS capacitors in the laboratory with an interactive model of the C–V curve.</p>
+<div class="dgrid">
+<div>
+<h2>In the laboratory</h2>
+<ul class="b">${it.b.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+<p class="tools"><b>Tools / methods:</b> ${esc(it.tools)}</p>
+</div>
+<div class="plates">${it.labph.map(([f, c, w]) => `<figure class="${w ? 'w' : ''}"><img src="img/${f}.jpg" alt="${esc(c)}"><figcaption>${esc(c)}</figcaption></figure>`).join('')}</div>
+</div>
+<h2 style="margin-top:34px">MIS Capacitor C–V Simulator</h2>
+<div class="dgrid" style="margin-top:8px">
+<div>
+<p>An interactive model of the C–V measurement made on the probe station. Sweeping the gate voltage moves the device through accumulation, depletion and inversion, with a cross-section showing where the charge sits at each voltage.</p>
+<ul class="b">
+<li>Adjustable device parameters: p- or n-type silicon, insulator (SiO₂, Si₃N₄, Al₂O₃ or HfO₂), gate metal, insulator thickness, substrate doping, fixed oxide charge and gate pad size, with capacitance in pF as read on an LCR meter.</li>
+<li>High-frequency (1 MHz) and low-frequency curves, with an explanation of why they separate in inversion.</li>
+<li>A pinned reference curve for comparing the effect of each change.</li>
+<li>A worked extraction of insulator thickness, depletion width, doping, flat-band voltage and oxide charge from the curve, the same analysis applied to measured probe-station data.</li>
+</ul>
+<p class="note">Curves are calculated from the charge in the silicon (Poisson's equation with Boltzmann statistics), following Sze &amp; Ng, <i>Physics of Semiconductor Devices</i> (3rd ed., 2007), and Nicollian &amp; Brews, <i>MOS Physics and Technology</i> (1982).</p>
+</div>
+<div class="try" style="grid-template-columns:minmax(0,1fr);margin:0">
+<a href="${MISX}"><img src="img/mis-simulator.jpg" alt="MIS Capacitor C–V Simulator showing a C–V curve and device cross-section"><div class="tx"><b>MIS Capacitor C–V Simulator</b><p class="note" style="margin:4px 0 6px">Sweep the gate voltage and change the oxide, doping or gate metal to see how the curve responds.</p><span class="go">Open the simulator &rarr;</span></div></a>
+</div>
+</div>`;
+
 const qdPage = () => `
 <div class="meta">Project · 2026 · Nanomaterials laboratory and interactive model</div>
 <h1 style="font-size:clamp(32px,4.2vw,48px);margin-top:6px;max-width:24ch">Quantum Dots: Lab Synthesis &amp; Colour Explorer</h1>
@@ -319,7 +350,7 @@ const show = () => {
   const it = items.find(i => i.id === id);
   document.body.classList.toggle('open', !!it);
   if (!it) { document.title = 'Timothy Gavris Portfolio'; return; }
-  $('body').innerHTML = it.id === 'homology' ? homology() : it.id === 'qd' ? qdPage() : std(it);
+  $('body').innerHTML = it.id === 'homology' ? homology() : it.id === 'qd' ? qdPage() : it.id === 'mis' ? misPage(it) : std(it);
   const k = order.indexOf(id);
   $('prev').href = '#' + order[(k - 1 + order.length) % order.length];
   $('next').href = '#' + order[(k + 1) % order.length];
