@@ -31,9 +31,12 @@ h2{font-size:clamp(26px,2.8vw,34px);margin-bottom:6px}
 h3{font-size:21px;line-height:1.2}
 p{margin:0 0 12px;max-width:68ch}
 .top{background:var(--band);color:#fff;border-bottom:6px solid var(--lav)}
-.top .wrap{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px 48px;align-items:end}
-.top p{color:#d9d4e8;font-size:17px;margin:12px 0 0}
-.contact{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:15px;color:#d9d4e8;justify-content:flex-end}
+.top .wrap{display:flex;flex-direction:column;align-items:center;text-align:center}
+.top p{color:#d9d4e8;font-size:17px;margin:12px auto 0;max-width:62ch}
+.top .deg{color:var(--lav);font-weight:600;font-size:18px;margin-top:10px}
+.contact{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 0;font-size:15px;color:#d9d4e8;margin-top:22px;padding-top:16px;border-top:1px solid #ffffff2e;width:min(100%,640px)}
+.contact>*{padding:0 16px;white-space:nowrap}
+.contact>*+*{border-left:1px solid #ffffff40}
 .contact a{color:var(--lav)}
 .figs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:22px;border-top:1px solid #ffffff55;padding-top:14px}
 .figs b{display:block;font-family:Literata,serif;font-size:clamp(26px,3vw,34px);line-height:1;font-weight:600}
@@ -109,8 +112,8 @@ figcaption{font-size:13px;color:var(--soft);margin-top:6px}
 .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:36px}
 .note{font-size:14px;color:var(--soft)}
 @media(max-width:980px){.feat{grid-row:auto}.feat .ph{aspect-ratio:16/9;flex:none;min-height:0}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:860px){.top .wrap,.dgrid,.two{grid-template-columns:minmax(0,1fr)}.contact{justify-content:flex-start}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.grid,.skills,.try,.refs{grid-template-columns:minmax(0,1fr)}.feat,.wide{grid-column:auto}.feat .ph{aspect-ratio:4/3}.figs{grid-template-columns:minmax(0,1fr)}.row{grid-template-columns:8.5em minmax(0,1fr) 3.5em;font-size:14px}.plates{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:860px){.top .wrap,.dgrid,.two{grid-template-columns:minmax(0,1fr)}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.contact{flex-direction:column;align-items:center;gap:6px}.contact>*+*{border-left:0}.grid,.skills,.try,.refs{grid-template-columns:minmax(0,1fr)}.feat,.wide{grid-column:auto}.feat .ph{aspect-ratio:4/3}.figs{grid-template-columns:minmax(0,1fr)}.row{grid-template-columns:8.5em minmax(0,1fr) 3.5em;font-size:14px}.plates{grid-template-columns:minmax(0,1fr)}}
 @media(prefers-reduced-motion:no-preference){body.open #detail{animation:in .25s ease-out}@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}.card:hover{transform:translateY(-2px)}}
 </style>
 </head>
@@ -118,10 +121,9 @@ figcaption{font-size:13px;color:var(--soft);margin-top:6px}
 
 <div id="home">
 <header class="band top"><div class="wrap">
-<div>
 <h1>Timothy Gavris</h1>
-<p>Nanotechnology Engineering (BASc), University of Waterloo. Experience spans industrial hardware assembly, research laboratory work and microfabrication, alongside computational work in bioinformatics. Select a role or project to view the full details.</p>
-</div>
+<p class="deg">Nanotechnology Engineering (BASc), University of Waterloo</p>
+<p>Hands-on experience across industrial electrical panel assembly, polymer and microbiology research laboratories, and thin-film microfabrication and device characterization. Select a role or project below to view the full details.</p>
 <div class="contact">
 <span>519-569-0028</span>
 <a href="mailto:tgavris@uwaterloo.ca">tgavris@uwaterloo.ca</a>
