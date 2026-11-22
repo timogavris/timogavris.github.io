@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quantum Dot Colour Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday learning tool, calm and exact
+   IDEA a vial of CdSe dots on a dark bench under a UV lamp: the glow is the readout
+   PICTURE the nanocrystal itself, atoms drawn to scale, glowing its true colour as it grows
+   COLOUR near-black bench, light ink, lavender for controls; the dot's own glow supplies the colour
+   TYPE Space Grotesk 700 + Inter
+   LAYOUT laptop: crystal left, readout right, size slider and vials across; phone: title, crystal, slider, readout */
+:root{color-scheme:dark;--bg:#0b0a10;--panel:#15131d;--line:#2b2738;--ink:#eceaf4;--mute:#a9a4bb;--lav:#c9b8ff;--c:#7cff6a}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:"Space Grotesk",Inter,sans-serif;font-weight:700;letter-spacing:-.02em;line-height:1.05;text-wrap:balance;margin:0}
+h1{font-size:clamp(32px,5vw,50px)}
+h2{font-size:clamp(24px,3vw,32px);margin-bottom:14px}
+h3{font-size:19px;margin:22px 0 8px}
+p{margin:0 0 12px;max-width:68ch}
+.band{padding-block:clamp(24px,4vw,56px);padding-inline:max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+.top{padding-bottom:8px}
+.lede{color:var(--mute);font-size:17px;margin-top:12px}
+.hero{display:grid;gap:20px 36px;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-areas:"stage panel" "ctl ctl";align-items:stretch}
+.stage{grid-area:stage;position:relative;background:radial-gradient(circle at 50% 50%,#17141f,#0b0a10 70%);border:1px solid var(--line);border-radius:18px;aspect-ratio:1/1;max-height:520px;width:100%;justify-self:center}
+.stage svg{position:absolute;inset:0;width:100%;height:100%}
+.halo{animation:pulse 3.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.72}}
+@media(prefers-reduced-motion:reduce){.halo{animation:none}}
+.panel{grid-area:panel;display:flex;flex-direction:column;gap:14px}
+.big{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:clamp(54px,8vw,88px);line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.big small{font-size:.38em;color:var(--mute);font-weight:500;margin-left:6px}
+.cname{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:600}
+.sw{width:22px;height:22px;border-radius:50%;background:var(--c);box-shadow:0 0 14px var(--c)}
+.stats{margin:0;display:grid;grid-template-columns:minmax(0,1fr) auto;border-top:1px solid var(--line)}
+.stats dt,.stats dd{margin:0;padding:9px 0;border-bottom:1px solid var(--line)}
+.stats dt{color:var(--mute)}
+.stats dd{text-align:right;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:12px}
+.ctl{grid-area:ctl;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px clamp(16px,3vw,28px)}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+label{font-weight:600}
+.val{font-family:"Space Grotesk",sans-serif;font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:44px;background:transparent;margin:6px 0 2px;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:14px;border-radius:7px;background:var(--track,var(--lav))}
+input[type=range]::-moz-range-track{height:14px;border-radius:7px;background:var(--track,var(--lav))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;margin-top:-8px;border-radius:50%;background:var(--c);border:3px solid #fff;box-shadow:0 0 0 4px #0b0a10}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--c);border:3px solid #fff}
+input[type=range]:focus-visible{outline:2px solid var(--lav);outline-offset:4px;border-radius:8px}
+.ends{display:flex;justify-content:space-between;color:var(--mute);font-size:13px}
+.vials{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;justify-content:space-between}
+.vial{flex:1 1 64px;min-height:44px;background:transparent;border:1px solid var(--line);border-radius:12px;color:var(--ink);padding:10px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;font:13px/1.2 Inter,sans-serif}
+.vial:hover{border-color:var(--mute)}
+.vial:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
+.vial[aria-pressed=true]{border-color:var(--lav);background:#1c1828}
+.tube{width:22px;height:46px;border:2px solid #4a4560;border-top:0;border-radius:0 0 11px 11px;position:relative;overflow:hidden}
+.tube i{position:absolute;inset:auto 0 0 0;height:66%;display:block}
+.vial b{font-weight:600;white-space:nowrap}
+.vial span{color:var(--mute);white-space:nowrap}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px 40px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:clamp(16px,2.5vw,24px)}
+.fig{position:relative;min-height:360px}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+svg text{font:14px Inter,sans-serif;fill:var(--ink);paint-order:stroke;stroke:#15131d;stroke-width:4px}
+svg text.m{fill:var(--mute)}
+ol{padding-left:22px;margin:0;max-width:68ch}
+ol li{margin-bottom:8px}
+.eq{background:#0f0d16;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-family:"Space Grotesk",sans-serif;font-size:17px;overflow-x:auto;margin:10px 0 14px}
+.eq div{white-space:nowrap}
+.eq .m{white-space:normal;color:var(--mute);font-family:Inter,sans-serif;font-size:14px;margin-top:6px}
+.hl{color:var(--c);font-weight:600}
+.note{color:var(--mute);font-size:14px}
+.refs{border-top:1px solid var(--line)}
+.refs li{color:var(--mute);font-size:14px}
+.tbl{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+.tbl td{padding:7px 0;border-bottom:1px solid var(--line)}
+.tbl td:last-child{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;padding-left:12px}
+.scl{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px 12px;align-items:center;margin-top:6px}
+.scl .lb{white-space:nowrap}
+.scl .bar{height:12px;border-radius:6px;background:#2b2738;position:relative;overflow:hidden}
+.scl .bar i{position:absolute;inset:0 auto 0 0;display:block;background:#c9b8ff;border-radius:6px}
+.scl .me i{background:var(--c);box-shadow:0 0 10px var(--c)}
+.scl .me{font-weight:600}
+.scl .v{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--mute)}
+.dims{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0 4px}
+.dims div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px;color:var(--mute)}
+.dims b{display:block;color:var(--ink);font-size:15px}
+.dims .on{border-color:var(--lav);background:#1c1828}
+@media(max-width:600px){.dims{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:820px){.hero{grid-template-columns:minmax(0,1fr);grid-template-areas:"stage" "ctl" "panel"}.stage{max-width:460px}.two{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.vials{gap:4px;flex-wrap:nowrap}.vial{flex:1 1 0;padding-inline:0}.vial span{display:none}.fig{min-height:300px}}
+</style>
+</head>
+<body>
+<div style="padding:10px max(5vw,16px);border-bottom:1px solid #ffffff22;font:500 15px Inter,system-ui,sans-serif"><a href="../" style="color:inherit;text-decoration:none">&larr; Timothy Gavris portfolio</a></div>
+
+<header class="band top"><div class="wrap">
+<h1>Quantum Dot Colour Explorer</h1>
+<p class="lede">Cadmium selenide (CdSe) nanocrystals glow a different colour depending only on their size. Drag the slider to grow or shrink one dot and see what changes, and why.</p>
+</div></header>
+
+<section class="band" style="padding-top:12px"><div class="wrap hero">
+  <div class="stage"><svg id="xtal" viewBox="0 0 400 400" role="img" aria-label="The nanocrystal drawn to scale, glowing its emission colour"></svg></div>
+  <div class="panel">
+    <div>
+      <div class="note">Glows at</div>
+      <div class="big"><span id="lam">540</span><small>nm</small></div>
+    </div>
+    <div class="cname"><span class="sw"></span><span id="cname">Green</span></div>
+    <dl class="stats">
+      <dt>Diameter</dt><dd id="sD"></dd>
+      <dt>Band gap (bulk CdSe is 1.74 eV)</dt><dd id="sE"></dd>
+      <dt>Extra energy from the squeeze</dt><dd id="sC"></dd>
+      <dt>Atoms in the dot</dt><dd id="sN"></dd>
+      <dt>Atoms on the surface</dt><dd id="sS"></dd>
+      <dt>Size compared with the exciton (11.2 nm)</dt><dd id="sB"></dd>
+    </dl>
+  </div>
+  <div class="ctl">
+    <div class="row"><label for="size">Dot diameter</label><span class="val" id="sizeVal">3.5 nm</span></div>
+    <input type="range" id="size" min="1.8" max="8.5" step="0.1" value="3.5" aria-describedby="sizeVal">
+    <div class="ends"><span>1.8 nm, smaller and bluer</span><span>8.5 nm, bigger and redder</span></div>
+    <div class="vials" id="vials"></div>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap two">
+  <div>
+    <h2>What is a quantum dot?</h2>
+    <p>A quantum dot is a tiny crystal of semiconductor, usually 2 to 10 nm across, made of a few hundred to a few thousand atoms. The ones on this page are cadmium selenide (CdSe). In the lab they are grown in hot solution and coated with a thin layer of organic molecules (ligands), so they float in a liquid like ink. That's what is in the vials.</p>
+    <p>What makes them special is that they are smaller than the natural size of an electron's wave in the material. The electron is trapped in all three directions, so instead of the continuous energy bands of a normal crystal, the dot has separate, sharp energy levels, like a single atom. That's why they are often called <b>artificial atoms</b>. Unlike a real atom, though, you can choose where the levels sit just by choosing the size.</p>
+    <p>"Quantum" is because quantum mechanics sets their properties. "Dot" is because they are confined in every direction, so they act as if they had zero dimensions:</p>
+    <div class="dims">
+      <div><b>Quantum well</b>A thin film: trapped in 1 direction, free in 2</div>
+      <div><b>Quantum wire</b>A nanowire: trapped in 2 directions, free in 1</div>
+      <div class="on"><b>Quantum dot</b>A nanocrystal: trapped in all 3 directions</div>
+    </div>
+    <p style="margin-top:14px">Quantum dots are used in QLED TV screens, as glowing labels for imaging cells, and in research on solar cells and LEDs. The 2023 Nobel Prize in Chemistry went to Moungi Bawendi, Louis Brus and Alexei Ekimov for discovering and developing them. It is the same Brus as the equation further down.</p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">How small is that?</h3>
+    <p class="note" style="margin-bottom:12px">The bars use a log scale: every 1/6 of the bar's length is 10× bigger.</p>
+    <div class="scl" id="scl"></div>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap two">
+  <div>
+    <h2 id="rT">What's happening at this size</h2>
+    <p id="rB"></p>
+    <h3>How a dot glows under a UV lamp</h3>
+    <ol>
+      <li>A UV photon carries more energy (about 3.4 eV at 365 nm) than any of these band gaps, so every dot in the vial absorbs it, whatever its size.</li>
+      <li>The photon lifts an electron from the valence band into the conduction band, leaving a positive "hole" behind. Both quickly lose their leftover energy as heat and settle into the lowest levels, called 1S<sub>e</sub> and 1S<sub>h</sub>.</li>
+      <li>The electron drops back across the gap and gives out one photon. Its energy equals the gap, and the gap is set by size, so <span class="hl">size alone picks the colour</span>.</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Energy levels: bulk crystal vs. your dot</h3>
+    <div class="fig" id="lvF"><svg id="lv"></svg></div>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap two">
+  <div class="card">
+    <h3 style="margin-top:0">The electron's wave has to fit inside the dot</h3>
+    <div class="fig" id="wvF" style="min-height:260px"><svg id="wv"></svg></div>
+    <p class="note" style="margin:8px 0 0">Coloured: the lowest-energy wave in your dot. Dashed: the same wave in an 8.5 nm dot.</p>
+  </div>
+  <div>
+    <h2>Why smaller means bluer</h2>
+    <p>In a big crystal, the electron and hole made by a photon spread out over a large region. In CdSe this electron–hole pair (an <b>exciton</b>) is naturally about 11 nm across. Make the crystal smaller than that and the electron's wave is forced to fit between the walls of the dot.</p>
+    <p>It works like a guitar string: a shorter string plays a higher note, and a squeezed electron has more energy. That extra energy grows as 1/D², so halving the diameter makes it about four times bigger. More energy across the gap means a bluer photon.</p>
+    <p id="wvT"></p>
+    <h3>The Brus equation (1984)</h3>
+    <div class="eq">
+      <div>E<sub>gap</sub> = E<sub>bulk</sub> + h²/(8R²)·(1/m<sub>e</sub>* + 1/m<sub>h</sub>*) − 1.786·e²/(4πε₀ε<sub>r</sub>R)</div>
+      <div id="brusN" style="margin-top:8px"></div>
+      <div class="m">The middle term is the squeeze, which pushes the energy up. The last term is the electron and hole attracting each other, which pulls it down a little. A third, very small term (about 0.003 eV) is left out.</div>
+    </div>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap two">
+  <div>
+    <h2>The simple model overshoots for small dots</h2>
+    <p id="cmT"></p>
+    <p>There are two main reasons. Brus treats the dot's walls as infinitely high, but a real electron leaks slightly into its surroundings, which lowers its energy. It also assumes the electron behaves the way it does in bulk CdSe (the same "effective mass"), and that stops being true when the dot is only a few atomic layers wide.</p>
+    <p>So in the lab, chemists use measured calibration curves instead. You measure the absorption peak of a batch and read the size off the curve. This tool uses the curve from Yu et al. (2003) for every colour you see.</p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Band gap (eV) vs. diameter (nm)</h3>
+    <div class="fig" id="chF"><svg id="ch"></svg></div>
+  </div>
+</div></section>
+
+<section class="band"><div class="wrap two">
+  <div class="card">
+    <h3 style="margin-top:0">Emission spectrum of the whole vial</h3>
+    <div class="fig" id="spF" style="min-height:300px"><svg id="sp"></svg></div>
+    <div class="row" style="margin-top:12px"><label for="spread">Size spread in the batch</label><span class="val" id="spVal">5%</span></div>
+    <input type="range" id="spread" min="0" max="15" step="1" value="5" aria-describedby="spVal">
+    <div class="ends"><span>0%, identical dots</span><span>15%, messy batch</span></div>
+  </div>
+  <div>
+    <h2>Why the glow has a width</h2>
+    <p>One dot gives out a fairly narrow line of colour, about 60 meV wide at room temperature (dashed curve). But a vial holds trillions of dots, and no synthesis makes them all exactly the same size. Each size glows a slightly different colour, so what you see is all those lines added together.</p>
+    <p id="spT"></p>
+    <p>Small dots spread out more for the same percentage spread, because their colour changes faster with size. Displays that use quantum dots want this peak as narrow as possible, since a narrower peak gives a purer colour.</p>
+  </div>
+</div></section>
+
+<footer class="band refs"><div class="wrap two">
+  <div>
+    <h3 style="margin-top:0">Numbers used</h3>
+    <table class="tbl"><tbody>
+      <tr><td>Bulk CdSe band gap, room temperature</td><td>1.74 eV</td></tr>
+      <tr><td>Electron and hole effective masses</td><td>0.13 m₀, 0.45 m₀</td></tr>
+      <tr><td>Dielectric constant ε<sub>r</sub></td><td>10.6</td></tr>
+      <tr><td>Exciton Bohr radius</td><td>about 5.6 nm</td></tr>
+      <tr><td>Emission vs. absorption peak (Stokes shift)</td><td>about 15 nm redder</td></tr>
+      <tr><td>Single-dot line width</td><td>about 60 meV</td></tr>
+      <tr><td>Atom count and surface share</td><td>rough, from bulk density</td></tr>
+    </tbody></table>
+  </div>
+  <div>
+    <h3 style="margin-top:0">Sources</h3>
+    <ol>
+      <li>L. E. Brus, "Electron–electron and electron-hole interactions in small semiconductor crystallites," <i>J. Chem. Phys.</i> 80, 4403 (1984).</li>
+      <li>W. W. Yu, L. Qu, W. Guo, X. Peng, "Experimental determination of the extinction coefficient of CdTe, CdSe, and CdS nanocrystals," <i>Chem. Mater.</i> 15, 2854 (2003). The size–wavelength curve.</li>
+    </ol>
+    <p class="note" style="margin-top:12px">Colours on screen are approximate: a monitor can't show pure spectral colours exactly.</p>
+  </div>
+</div></footer>
+
+<script>
+{
+const EB=1.74,ME=0.13,MH=0.45,ER=10.6,AB=11.2,STOKES=15,HC=1239.84;
+const hP=6.62607e-34,m0=9.10938e-31,q=1.602177e-19,e0=8.8541878e-12;
+const $=id=>document.getElementById(id);
+const dOf=l=>1.6122e-9*l**4-2.6575e-6*l**3+1.6242e-3*l**2-0.4277*l+41.57;
+const lamAbs=D=>{let lo=400,hi=690;for(let i=0;i<40;i++){const m=(lo+hi)/2;if(dOf(m)<D)lo=m;else hi=m}return (lo+hi)/2};
+const lamEm=D=>lamAbs(D)+STOKES;
+const gapMeas=D=>HC/lamAbs(D);
+const brusParts=D=>{const R=D/2*1e-9;const c=hP**2/(8*R*R)*(1/(ME*m0)+1/(MH*m0))/q;const k=1.786*q/(4*Math.PI*e0*ER*R);return {c,k,E:EB+c-k}};
+const rgb=l=>{let r=0,g=0,b=0;if(l<440){r=-(l-440)/60;b=1}else if(l<490){g=(l-440)/50;b=1}else if(l<510){g=1;b=-(l-510)/20}else if(l<580){r=(l-510)/70;g=1}else if(l<645){r=1;g=-(l-645)/65}else r=1;
+  let f=l<420?.3+.7*(l-380)/40:l>700?.3+.7*(780-l)/80:1;const t=v=>Math.round(255*Math.pow(Math.max(0,v*f),.8));return `rgb(${t(r)},${t(g)},${t(b)})`};
+const cname=l=>l<450?"Violet-blue":l<485?"Blue":l<505?"Sky blue":l<525?"Teal green":l<565?"Green":l<590?"Yellow":l<620?"Orange":l<650?"Red":"Deep red";
+const atoms=D=>36.6*Math.PI/6*D**3;
+const surf=D=>1-Math.max(0,(D/2-.3)/(D/2))**3;
+const f2=v=>v.toFixed(2),f1=v=>v.toFixed(1);
+const round=n=>n<1000?Math.round(n/10)*10:Math.round(n/100)*100;
+let D=3.5,SP=5;
+
+const sizeEl=$("size"),spEl=$("spread");
+{const st=[];for(let d=1.8;d<=8.51;d+=.335)st.push(`${rgb(lamEm(d))} ${((d-1.8)/6.7*100).toFixed(1)}%`);sizeEl.style.setProperty("--track",`linear-gradient(90deg,${st.join(",")})`)}
+const presets=[2.0,2.5,3.0,3.6,4.4,5.5,7.0];
+$("vials").innerHTML=presets.map(d=>{const l=lamEm(d),c=rgb(l);return `<button class="vial" data-d="${d}" aria-pressed="false"><div class="tube"><i style="background:${c};box-shadow:0 0 16px ${c}"></i></div><b>${d.toFixed(1)} nm</b><span>${Math.round(l)} nm</span></button>`}).join("");
+
+function xtal(){
+  const s=40,R=D/2*s,c=rgb(lamEm(D));let a="";
+  const sp=0.43*s,rh=sp*Math.sqrt(3)/2;
+  for(let j=-12;j<=12;j++){for(let i=-12;i<=12;i++){const x=i*sp+(j&1?sp/2:0),y=j*rh;if(x*x+y*y<(R-3)**2){const cd=(i+j)&1;a+=`<circle cx="${200+x}" cy="${200+y}" r="${cd?5.6:4.2}" fill="${cd?"#e4def7":c}" opacity="${cd?.92:.95}"/>`}}}
+  $("xtal").innerHTML=`<defs><radialGradient id="hg"><stop offset="0" stop-color="${c}" stop-opacity=".9"/><stop offset=".45" stop-color="${c}" stop-opacity=".35"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></radialGradient><radialGradient id="cg" cx=".38" cy=".35"><stop offset="0" stop-color="#2a2340"/><stop offset="1" stop-color="#110e18"/></radialGradient></defs>
+  <circle class="halo" cx="200" cy="200" r="${R*1.7+46}" fill="url(#hg)"/>
+  <circle cx="200" cy="200" r="${R}" fill="url(#cg)" stroke="${c}" stroke-width="2"/>${a}
+  <line x1="24" y1="372" x2="64" y2="372" stroke="#eceaf4" stroke-width="3"/><text x="72" y="377" style="stroke:#0f0d16">1 nm</text>
+  <text x="24" y="36" style="stroke:#0f0d16">Cd and Se atoms, to scale</text>`;
+}
+
+function levels(){
+  const sv=$("lv"),W=sv.clientWidth,H=sv.clientHeight;if(!W)return;
+  const Eg=gapMeas(D),dl=Eg-EB,de=dl*.776,dh=dl*.224,c=rgb(lamEm(D));
+  const lo=-1,hi=4.1,pt=14,pb=30,y=E=>pt+(hi-E)/(hi-lo)*(H-pt-pb);
+  const b0=W*.04,b1=W*.36,d0=W*.5,d1=W*.8,lab=W<480;
+  let o=`<rect x="${b0}" y="${y(hi)}" width="${b1-b0}" height="${y(EB)-y(hi)}" fill="#c9b8ff" opacity=".22"/><rect x="${b0}" y="${y(0)}" width="${b1-b0}" height="${y(lo)-y(0)}" fill="#c9b8ff" opacity=".22"/>`;
+  o+=`<text x="${(b0+b1)/2}" y="${y(hi)+22}" text-anchor="middle" class="m">${lab?"Cond. band":"Conduction band"}</text><text x="${(b0+b1)/2}" y="${y(lo)-10}" text-anchor="middle" class="m">${lab?"Val. band":"Valence band"}</text>`;
+  o+=`<line x1="${(b0+b1)/2}" y1="${y(EB)+3}" x2="${(b0+b1)/2}" y2="${y(0)-3}" stroke="#a9a4bb" stroke-width="2"/><text x="${(b0+b1)/2}" y="${(y(EB)+y(0))/2+5}" text-anchor="middle">1.74 eV</text>`;
+  o+=`<line x1="${b1}" y1="${y(EB)}" x2="${d1}" y2="${y(EB)}" stroke="#a9a4bb" stroke-dasharray="3 5"/><line x1="${b1}" y1="${y(0)}" x2="${d1}" y2="${y(0)}" stroke="#a9a4bb" stroke-dasharray="3 5"/>`;
+  const lv=[[EB+de,"1Se"],[EB+de*2.05,"1Pe"],[-dh,"1Sh"]];
+  for(const [E,n] of lv){if(E>hi-.05||E<lo+.05||(n=="1Pe"&&y(EB+de)-y(E)<18))continue;o+=`<line x1="${d0}" y1="${y(E)}" x2="${d1}" y2="${y(E)}" stroke="#eceaf4" stroke-width="3"/><text x="${d1+8}" y="${y(E)+5}">${n}</text>`}
+  const xm=(d0+d1)/2;o+=`<line x1="${xm}" y1="${y(EB+de)+4}" x2="${xm}" y2="${y(-dh)-12}" stroke="${c}" stroke-width="4"/><path d="M${xm-8} ${y(-dh)-14}L${xm} ${y(-dh)-2}L${xm+8} ${y(-dh)-14}Z" fill="${c}"/>`;
+  o+=`<text x="${xm-10}" y="${(y(EB+de)+y(-dh))/2+5}" text-anchor="end">${f2(Eg)} eV</text>`;
+  o+=`<text x="${(b0+b1)/2}" y="${H-8}" text-anchor="middle" class="m">Bulk CdSe</text><text x="${xm}" y="${H-8}" text-anchor="middle" class="m">Your ${f1(D)} nm dot</text>`;
+  sv.innerHTML=o;
+}
+
+function wave(){
+  const sv=$("wv"),W=sv.clientWidth,H=sv.clientHeight;if(!W)return;
+  const full=W-40,w=D/8.5*full,x0=(W-w)/2,base=H-60,A=Math.min(110,H-110),c=rgb(lamEm(D));
+  const path=(xa,ww)=>{let p=`M${xa} ${base}`;for(let i=0;i<=60;i++){const t=i/60;p+=`L${xa+t*ww} ${base-A*Math.sin(Math.PI*t)}`}return p};
+  let o=`<path d="${path(20,full)}" fill="none" stroke="#a9a4bb" stroke-width="2" stroke-dasharray="5 6"/>`;
+  o+=`<path d="${path(x0,w)}Z" fill="${c}" opacity=".28"/><path d="${path(x0,w)}" fill="none" stroke="${c}" stroke-width="3.5"/>`;
+  o+=`<line x1="${x0}" y1="${base-A-20}" x2="${x0}" y2="${base}" stroke="#eceaf4" stroke-width="4"/><line x1="${x0+w}" y1="${base-A-20}" x2="${x0+w}" y2="${base}" stroke="#eceaf4" stroke-width="4"/><line x1="10" y1="${base}" x2="${W-10}" y2="${base}" stroke="#2b2738"/>`;
+  o+=`<line x1="${x0}" y1="${base+22}" x2="${x0+w}" y2="${base+22}" stroke="#a9a4bb"/><text x="${W/2}" y="${base+46}" text-anchor="middle">D = ${f1(D)} nm</text>`;
+  sv.innerHTML=o;
+}
+
+function chart(){
+  const sv=$("ch"),W=sv.clientWidth,H=sv.clientHeight;if(!W)return;
+  const ml=46,mr=14,mt=12,mb=40,x=d=>ml+(d-1.5)/7*(W-ml-mr),y=E=>mt+(3.4-E)/1.8*(H-mt-mb);
+  let o=`<defs><clipPath id="cp"><rect x="${ml}" y="${mt}" width="${W-ml-mr}" height="${H-mt-mb}"/></clipPath></defs>`;
+  for(let E=1.6;E<=3.41;E+=.4){o+=`<line x1="${ml}" x2="${W-mr}" y1="${y(E)}" y2="${y(E)}" stroke="#2b2738"/><text x="${ml-8}" y="${y(E)+5}" text-anchor="end" class="m">${E.toFixed(1)}</text>`}
+  for(let d=2;d<=8;d+=W<520?2:1)o+=`<text x="${x(d)}" y="${H-mb+20}" text-anchor="middle" class="m">${d}</text>`;
+  o+=`<text x="${W-mr}" y="${H-4}" text-anchor="end" class="m">diameter (nm)</text><text x="${ml-8}" y="${mt-0}" text-anchor="end" class="m" dy="-2"></text>`;
+  o+=`<line x1="${ml}" x2="${W-mr}" y1="${y(EB)}" y2="${y(EB)}" stroke="#a9a4bb" stroke-dasharray="4 5"/><text x="${W-mr}" y="${y(EB)+18}" text-anchor="end" class="m">bulk 1.74 eV</text>`;
+  let pm="",pb="";for(let d=1.5;d<=8.51;d+=.05){pm+=(pm?"L":"M")+x(d)+" "+y(gapMeas(Math.max(1.6,d)));pb+=(pb?"L":"M")+x(d)+" "+y(Math.min(4,brusParts(d).E))}
+  o+=`<g clip-path="url(#cp)"><path d="${pb}" fill="none" stroke="#eceaf4" stroke-width="2.5" stroke-dasharray="7 6"/><path d="${pm}" fill="none" stroke="#c9b8ff" stroke-width="3.5"/></g>`;
+  o+=`<text x="${x(3.35)+8}" y="${y(brusParts(3.35).E)-6}">Brus model</text><text x="${x(2.3)+6}" y="${y(gapMeas(2.3))+24}" fill="#c9b8ff" style="fill:#c9b8ff">Measured dots</text>`;
+  const Bm=brusParts(D).E;if(Bm<=3.4)o+=`<circle cx="${x(D)}" cy="${y(Bm)}" r="6" fill="#15131d" stroke="#eceaf4" stroke-width="2.5"/>`;
+  o+=`<circle cx="${x(D)}" cy="${y(gapMeas(D))}" r="8" fill="${rgb(lamEm(D))}" stroke="#fff" stroke-width="2"/>`;
+  sv.innerHTML=o;
+}
+
+function spectrum(){
+  const sv=$("sp"),W=sv.clientWidth,H=sv.clientHeight;if(!W)return;
+  const ml=14,mr=14,mt=14,mb=34,L0=420,L1=720,x=l=>ml+(l-L0)/(L1-L0)*(W-ml-mr),y=v=>mt+(1-v)*(H-mt-mb);
+  const s=.06/2.3548,sig=SP/100,ens=[],one=[];const E1=HC/lamEm(D);
+  const samp=[];if(sig>0){for(let z=-3;z<=3.001;z+=.1){const d=D*(1+sig*z);if(d>1.55)samp.push([HC/lamEm(Math.min(10.5,d)),Math.exp(-z*z/2)])}}else samp.push([E1,1]);
+  for(let l=L0;l<=L1;l++){const E=HC/l;let v=0;for(const [e,w] of samp)v+=w*Math.exp(-((E-e)**2)/(2*s*s));ens.push(v);one.push(Math.exp(-((E-E1)**2)/(2*s*s)))}
+  const mx=Math.max(...ens);for(let i=0;i<ens.length;i++)ens[i]/=mx;
+  let pk=0;for(let i=1;i<ens.length;i++)if(ens[i]>ens[pk])pk=i;
+  let a=pk,b=pk;while(a>0&&ens[a]>.5)a--;while(b<ens.length-1&&ens[b]>.5)b++;
+  const fw=b-a,El=HC/(L0+a),Eh=HC/(L0+b),fwm=Math.round((El-Eh)*1000);
+  let st="";for(let l=L0;l<=L1;l+=10)st+=`<stop offset="${(l-L0)/(L1-L0)}" stop-color="${rgb(l)}"/>`;
+  let pe=`M${x(L0)} ${y(0)}`,po="";ens.forEach((v,i)=>{pe+=`L${x(L0+i)} ${y(v)}`;po+=(po?"L":"M")+x(L0+i)+" "+y(one[i])});pe+=`L${x(L1)} ${y(0)}Z`;
+  let o=`<defs><linearGradient id="sg" gradientUnits="userSpaceOnUse" x1="${x(L0)}" x2="${x(L1)}" y1="0" y2="0">${st}</linearGradient></defs>`;
+  o+=`<line x1="${ml}" x2="${W-mr}" y1="${y(0)}" y2="${y(0)}" stroke="#2b2738"/>`;
+  for(let l=450;l<=700;l+=W<520?100:50)o+=`<text x="${x(l)}" y="${H-10}" text-anchor="middle" class="m">${l}</text>`;
+  o+=`<path d="${pe}" fill="url(#sg)" opacity=".85"/><path d="${po}" fill="none" stroke="#eceaf4" stroke-width="2" stroke-dasharray="5 5"/>`;
+  o+=`<line x1="${x(L0+a)}" x2="${x(L0+b)}" y1="${y(.5)}" y2="${y(.5)}" stroke="#fff" stroke-width="2"/>`;
+  const tx=x(L0+b)+8,right=tx+90<W;o+=`<text x="${right?tx:x(L0+a)-8}" y="${y(.5)+5}" text-anchor="${right?"start":"end"}">${fw} nm wide</text>`;
+  sv.innerHTML=o;
+  $("spT").innerHTML=`With a <b>${SP}%</b> size spread at ${f1(D)} nm, the vial's glow peaks at <span class="hl">${L0+pk} nm</span> and is <b>${fw} nm</b> wide at half its height (about ${fwm} meV). ${SP===0?"With identical dots, all that's left is the single-dot width.":SP<=5?"That's close to what a careful hot-injection synthesis achieves.":"That's a broad, less pure glow; a better synthesis would tighten it."}`;
+}
+
+function text(){
+  const l=lamEm(D),Eg=gapMeas(D),cf=Eg-EB,n=atoms(D),sf=Math.round(surf(D)*100),lay=Math.round(D/.35);
+  const shift=(lamEm(D+.05)-lamEm(D-.05));
+  const head=`At ${f1(D)} nm the dot is about ${lay} atomic layers across and holds roughly ${round(n).toLocaleString()} atoms, with about ${sf}% of them on the surface. Squeezing raises the gap by <span class="hl">${f2(cf)} eV</span> above bulk, to ${f2(Eg)} eV. `;
+  let t,b;
+  if(l<490){t="Tiny dot, blue glow";b=head+"The electron is squeezed into a space far smaller than its natural size, so this is where size has the biggest effect: here 0.1 nm of growth moves the colour by about "+shift.toFixed(0)+" nm. Blue dots are also the hardest to make bright. With so many atoms on the surface there are many broken bonds (\"traps\") where the electron can lose its energy as heat instead of light, which is why dots are usually coated with a ZnS shell."}
+  else if(l<540){t="Small dot, green glow";b=head+"Green sits near the peak of the human eye's sensitivity, so green dots look the brightest to us at the same power. A 0.1 nm change in size still shifts the colour by about "+shift.toFixed(0)+" nm, so stopping the synthesis at exactly the right moment matters."}
+  else if(l<590){t="Medium dot, yellow glow";b=head+"In the lab, dots grow in a hot solution, and the longer they grow, the redder they get. Chemists pull samples out over time to land on a target colour. At this size, 0.1 nm of growth moves the colour by about "+shift.toFixed(0)+" nm."}
+  else if(l<625){t="Larger dot, orange glow";b=head+"The squeeze is getting weaker. Because the extra energy goes as 1/D², each added nanometre now changes the colour less: 0.1 nm of growth moves it by only about "+shift.toFixed(0)+" nm."}
+  else{t="Big dot, red glow";b=head+"You're getting close to bulk CdSe, whose 1.74 eV gap corresponds to about 713 nm, deep red at the edge of what eyes can see. The dot is still smaller than the exciton (about 11 nm across), so a little confinement remains. Somewhere past about 12 nm the colour would stop changing and the crystal would act like ordinary bulk CdSe."}
+  $("rT").textContent=t;$("rB").innerHTML=b;
+  const B=brusParts(D);
+  $("wvT").innerHTML=`At <b>${f1(D)} nm</b>, squeezing adds <span class="hl">${f2(cf)} eV</span> to the 1.74 eV bulk gap in real dots. Shrink it to ${f1(D/2)} nm and the simple theory says that extra energy would roughly quadruple.`;
+  $("brusN").innerHTML=`R = ${f2(D/2)} nm: &nbsp;E = 1.74 + ${f2(B.c)} − ${f2(B.k)} = <span class="hl">${f2(B.E)} eV</span> (${Math.round(HC/B.E)} nm)`;
+  const diff=B.E-Eg;
+  $("cmT").innerHTML=`For your ${f1(D)} nm dot, the Brus equation predicts a gap of <b>${f2(B.E)} eV</b>, but real dots of this size measure <b>${f2(Eg)} eV</b>. ${diff>.05?`That's ${f2(diff)} eV too high, which would put the colour at ${Math.round(HC/B.E)} nm instead of ${Math.round(HC/Eg)} nm. The smaller the dot, the bigger the miss.`:"For dots this big the two agree closely. The miss grows as the dot shrinks: try 2 nm."}`;
+}
+
+const scale=()=>{const items=[["Cd–Se bond",.26],["Your dot",D,1],["Width of DNA",2],["Haemoglobin protein",5],["Flu virus",100],["Red blood cell",7000],["Human hair",80000]].sort((p,q)=>p[1]-q[1]);
+  const lo=Math.log10(.1),hi=Math.log10(1e5),fmt=v=>v<1000?(v<10?v.toFixed(v<1?2:1):v)+" nm":(v/1000).toLocaleString()+" µm";
+  $("scl").innerHTML=items.map(([n,v,me])=>`<span class="lb${me?" me":""}">${n}</span><span class="bar${me?" me":""}"><i style="width:${((Math.log10(v)-lo)/(hi-lo)*100).toFixed(1)}%"></i></span><span class="v${me?" me":""}">${fmt(v)}</span>`).join("")};
+function stats(){
+  const l=lamEm(D),c=rgb(l),Eg=gapMeas(D);
+  document.documentElement.style.setProperty("--c",c);
+  $("lam").textContent=Math.round(l);$("cname").textContent=cname(l);
+  $("sD").textContent=f1(D)+" nm";$("sE").textContent=f2(Eg)+" eV";$("sC").textContent="+"+f2(Eg-EB)+" eV";
+  $("sN").textContent="≈ "+round(atoms(D)).toLocaleString();$("sS").textContent="≈ "+Math.round(surf(D)*100)+"%";
+  $("sB").textContent=Math.round(D/AB*100)+"% of it";$("sizeVal").textContent=f1(D)+" nm";$("spVal").textContent=SP+"%";
+  for(const v of document.querySelectorAll(".vial"))v.setAttribute("aria-pressed",Math.abs(+v.dataset.d-D)<.05?"true":"false");
+}
+
+function all(){stats();scale();xtal();text();levels();wave();chart();spectrum()}
+sizeEl.addEventListener("input",()=>{D=+sizeEl.value;all()});
+spEl.addEventListener("input",()=>{SP=+spEl.value;spectrum();stats()});
+$("vials").addEventListener("click",e=>{const v=e.target.closest(".vial");if(!v)return;D=+v.dataset.d;sizeEl.value=D;all()});
+const ro=new ResizeObserver(()=>{levels();wave();chart();spectrum()});
+for(const id of ["lvF","wvF","chF","spF"])ro.observe($(id));
+all();
+}
+</script>
+</body>
+</html>

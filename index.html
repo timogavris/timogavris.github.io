@@ -46,6 +46,7 @@ p{margin:0 0 12px;max-width:68ch}
 .card:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--deep);outline-offset:3px}
 .card .ph{aspect-ratio:4/3;background:var(--panel);overflow:hidden;display:grid;grid-template-columns:repeat(var(--n,1),minmax(0,1fr));gap:2px}
 .card .ph img{width:100%;height:100%;object-fit:cover}
+.card .ph img[src*="explorer"]{object-position:left top}
 .card .ph svg{width:100%;height:100%}
 .card .tx{padding:16px 18px 18px;display:flex;flex-direction:column;gap:6px;flex:1}
 .meta{font-size:14px;color:var(--soft)}
@@ -164,6 +165,7 @@ figcaption{font-size:13px;color:var(--soft);margin-top:6px}
 {
 const FHS = 'protein-search/';
 const EXP = 'protein-explorer/';
+const QDX = 'quantum-dot-explorer/';
 
 
 const items = [
@@ -191,10 +193,9 @@ const items = [
   b:['Fabricated MIS devices/capacitors using PECVD, UV photolithography, RIE, Al sputtering/PVD and wet etching, carrying devices through multi-step fabrication to electrical testing.','Characterized films and devices using ellipsometry, profilometry, four-point probe, SEM and C-V/I-V testing.','Used RIE for patterned dielectric etch and compared profilometry and ellipsometry measurements to investigate process and measurement variation.'],
   tools:'PECVD, photolithography, RIE, sputtering, wet etch, ellipsometry, profilometry, four-point probe, C-V/I-V',
   ph:[['mis-wafer','Finished MIS capacitor wafer'],['mis-probe-station','Probe station used for electrical testing'],['mis-probe-tips','Probe tips landed on device contact pads, viewed on the microscope monitor',1]]},
- {id:'qd', kind:'proj', title:'Quantum Dot Samples Under UV', org:'Nanomaterials Lab', date:'2026',
-  sum:'Nanomaterials laboratory work with quantum-dot samples, examined by their fluorescence under UV excitation.',
-  b:['Performed nanomaterials laboratory work with quantum-dot samples and examined their fluorescence under UV excitation.'],
-  ph:[['qd-uv','Quantum-dot samples fluorescing under UV excitation',1]]}
+ {id:'qd', kind:'proj', demo:true, title:'Quantum Dots: Lab Synthesis & Colour Explorer', org:'Nanomaterials Lab and interactive physics model', date:'2026',
+  sum:'Synthesized colloidal quantum dots in the nanomaterials laboratory, then built an interactive model that predicts their emission colour from particle size.',
+  ph:[['qd-uv','Quantum-dot samples fluorescing under UV excitation'],['qd-explorer','Quantum Dot Colour Explorer']]}
 ];
 
 const papers = [
@@ -213,7 +214,7 @@ const $ = id => document.getElementById(id);
 const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
 const phBox = it => it.ph ? `<div class="ph" style="--n:${it.feat ? 2 : Math.min(it.ph.length, 2)}">${it.ph.slice(0, 2).map(([f, c]) => `<img src="img/${f}.jpg" alt="${esc(c)}" loading="lazy">`).join('')}</div>`
   : '';
-const card = it => `<button type="button" class="card${it.feat ? ' feat' : ''}${it.wide ? ' wide' : ''}" data-id="${it.id}">${phBox(it)}<div class="tx">${it.feat ? '<span class="tag">Live demo</span>' : ''}<h3>${esc(it.title)}</h3><div class="meta">${esc(it.org)} · ${esc(it.date.split(' · ')[0])}</div><p class="sum">${esc(it.sum)}</p><span class="more">View details &rarr;</span></div></button>`;
+const card = it => `<button type="button" class="card${it.feat ? ' feat' : ''}${it.wide ? ' wide' : ''}" data-id="${it.id}">${phBox(it)}<div class="tx">${it.feat || it.demo ? '<span class="tag">Live demo</span>' : ''}<h3>${esc(it.title)}</h3><div class="meta">${esc(it.org)} · ${esc(it.date.split(' · ')[0])}</div><p class="sum">${esc(it.sum)}</p><span class="more">View details &rarr;</span></div></button>`;
 $('g-exp').innerHTML = items.filter(i => i.kind === 'exp').map(card).join('');
 $('g-proj').innerHTML = items.filter(i => i.kind === 'proj').map(card).join('');
 
@@ -275,13 +276,50 @@ const homology = () => `
 <div class="refs">${papers.map(([a, u, t, w]) => `<div><a href="${u}">${a}</a> ${t}<span>${w}</span></div>`).join('')}</div>
 <p class="note" style="margin-top:22px">Built with an AI coding agent that I directed: I set the goal and metric, chose the methods from the papers, and reran and checked the results. Benchmarks ran on a 2-core cloud machine.</p>`;
 
+const qdPage = () => `
+<div class="meta">Project · 2026 · Nanomaterials laboratory and interactive model</div>
+<h1 style="font-size:clamp(32px,4.2vw,48px);margin-top:6px;max-width:24ch">Quantum Dots: Lab Synthesis &amp; Colour Explorer</h1>
+<p class="lede" style="font-size:18px;color:var(--soft);margin:14px 0 22px;max-width:72ch">Quantum dots are semiconductor nanocrystals, typically 2 to 10 nm across, whose emission colour is set by their size. This project pairs hands-on synthesis in the nanomaterials laboratory with an interactive model of the physics that produces those colours.</p>
+<div class="dgrid">
+<div>
+<h2>In the laboratory</h2>
+<ul class="b">
+<li>Synthesized colloidal quantum-dot samples in the nanomaterials laboratory.</li>
+<li>Examined the samples under UV excitation, where the series emits across the visible spectrum from yellow-green to red.</li>
+</ul>
+<p>Each vial absorbs the same UV light but glows a different colour. The model below explains why: the colour is set by the size of the nanocrystals in each batch.</p>
+</div>
+<div class="plates"><figure class="w"><img src="img/qd-uv.jpg" alt="Quantum-dot samples fluorescing under UV excitation"><figcaption>Quantum-dot samples fluorescing under UV excitation</figcaption></figure></div>
+</div>
+<h2 style="margin-top:34px">Quantum Dot Colour Explorer</h2>
+<div class="dgrid" style="margin-top:8px">
+<div>
+<p>An interactive model of cadmium selenide (CdSe) quantum dots. Adjusting the particle diameter from 1.8 to 8.5 nm updates every figure on the page:</p>
+<ul class="b">
+<li>Emission wavelength and colour, band gap, confinement energy, atom count and surface-atom fraction for the selected size.</li>
+<li>Energy-level and electron-wavefunction diagrams showing how confinement raises the band gap.</li>
+<li>The Brus equation compared with the measured size calibration of Yu et al., with an explanation of why the simple model overestimates the gap for small dots.</li>
+<li>The emission spectrum of a whole vial, with an adjustable size spread that shows how batch uniformity controls colour purity.</li>
+<li>A scale comparison placing the dot alongside a chemical bond, DNA, a protein, a virus, a red blood cell and a human hair.</li>
+</ul>
+</div>
+<div class="try" style="grid-template-columns:minmax(0,1fr);margin:0">
+<a href="${QDX}"><img src="img/qd-explorer.jpg" alt="Quantum Dot Colour Explorer showing a 3.5 nm dot glowing yellow at 584 nm"><div class="tx"><b>Quantum Dot Colour Explorer</b><p class="note" style="margin:4px 0 6px">Drag the size slider and watch the colour, energy levels and spectrum change.</p><span class="go">Open the explorer &rarr;</span></div></a>
+</div>
+</div>
+<h2 style="margin-top:30px">References</h2>
+<div class="refs">
+<div><a href="https://doi.org/10.1063/1.447218">Brus (1984)</a> Electron–electron and electron–hole interactions in small semiconductor crystallites. J. Chem. Phys. 80:4403<span>The confinement model used for the size–band gap relationship.</span></div>
+<div><a href="https://doi.org/10.1021/cm034081k">Yu, Qu, Guo &amp; Peng (2003)</a> Experimental determination of the extinction coefficient of CdTe, CdSe, and CdS nanocrystals. Chem. Mater. 15:2854<span>The measured size–wavelength calibration used for every colour in the explorer.</span></div>
+</div>`;
+
 const order = items.map(i => i.id);
 const show = () => {
   const id = location.hash.slice(1);
   const it = items.find(i => i.id === id);
   document.body.classList.toggle('open', !!it);
   if (!it) { document.title = 'Timothy Gavris Portfolio'; return; }
-  $('body').innerHTML = it.id === 'homology' ? homology() : std(it);
+  $('body').innerHTML = it.id === 'homology' ? homology() : it.id === 'qd' ? qdPage() : std(it);
   const k = order.indexOf(id);
   $('prev').href = '#' + order[(k - 1 + order.length) % order.length];
   $('next').href = '#' + order[(k + 1) % order.length];
