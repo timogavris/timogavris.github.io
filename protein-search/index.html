@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faster Homology Search</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE work: a research case study shown to a hiring team
+   IDEA a journal article's results page, with a live figure the reader can tune
+   PICTURE speed-vs-hits-kept frontier; picking a prefilter setting moves every figure
+   COLOUR white / near-black ink, ultramarine for the chosen method, coral for lost hits
+   TYPE Spectral 500 display + Inter text
+   LAYOUT finding + figures across the top, wide tradeoff figure with controls beside it; stacks on phones */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#0d0e18);--ink:light-dark(#14110f,#e9e8f2);--soft:light-dark(#5d5a66,#a3a1b5);--rule:light-dark(#e3e1ea,#262839);--panel:light-dark(#f6f6fb,#151729);--blue:light-dark(#1d2bd8,#8d97ff);--coral:light-dark(#d9452f,#ff7d66);--grey:light-dark(#9b98a6,#6b6a80)}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+.band{padding-block:clamp(24px,4vw,56px);padding-inline:max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+h1,h2{font-family:Spectral,Georgia,serif;font-weight:500;letter-spacing:-.02em;line-height:1.08;text-wrap:balance;margin:0}
+h1{font-size:clamp(30px,4.4vw,48px);max-width:22ch}
+h2{font-size:clamp(24px,2.6vw,32px);margin-bottom:12px}
+p{margin:0 0 12px;max-width:68ch}
+.lede{color:var(--soft);font-size:17px;margin-top:14px}
+.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(10em,1fr));gap:12px 28px;margin-top:26px;border-top:1px solid var(--ink);padding-top:14px}
+.big{font-family:Spectral,Georgia,serif;font-size:clamp(30px,3.6vw,42px);line-height:1;white-space:nowrap}
+.big.b{color:var(--blue)}
+.lab{font-size:14px;color:var(--soft);margin-top:6px}
+.main{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,1fr);gap:28px;align-items:stretch}
+.fig{position:relative;min-height:380px}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+svg text{font:13px Inter,sans-serif;fill:var(--soft);paint-order:stroke;stroke:var(--bg);stroke-width:4px}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.seg button{font:500 14px Inter,sans-serif;min-height:44px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);border-radius:8px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--blue);border-color:var(--blue);color:#fff}
+button:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+label{font-size:14px;font-weight:600}
+input[type=range]{width:100%;accent-color:var(--blue);height:44px}
+.read{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px}
+.read dt{color:var(--soft)}
+.read dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+.note{font-size:14px;color:var(--soft)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px}
+.ladder{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.row{display:grid;grid-template-columns:11.5em minmax(0,1fr) 4.5em;gap:10px;align-items:center;font-size:14px}
+.bar{height:22px;background:var(--grey);border-radius:3px}
+.bar.a{background:var(--blue)}
+.bar.p{background:color-mix(in srgb,var(--blue) 55%,var(--bg))}
+.row .v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pipe{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:18px 0 8px;counter-reset:s}
+.st{border-top:3px solid var(--blue);padding-top:10px;font-size:14px}
+.st b{display:block;font-size:15px;margin-bottom:4px}
+.st .n{font-family:Spectral,serif;font-size:22px;color:var(--blue);white-space:nowrap}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;border-bottom:1px solid var(--ink)}
+.lim{display:grid;grid-template-columns:repeat(auto-fit,minmax(16em,1fr));gap:8px 32px}
+.refs{font-size:14px;color:var(--soft);columns:2 320px;column-gap:40px}
+.refs p{break-inside:avoid;margin-bottom:8px}
+a{color:var(--blue)}
+.foot{border-top:1px solid var(--rule)}
+@media(max-width:900px){.main,.two{grid-template-columns:minmax(0,1fr)}.pipe{grid-template-columns:repeat(auto-fit,minmax(9em,1fr))}}
+@media(max-width:600px){.fig{min-height:320px}.row{grid-template-columns:8.5em minmax(0,1fr) 4em}th,td{padding:6px 4px;font-size:13px}}
+@media(prefers-reduced-motion:no-preference){.hl{transition:cx .3s,cy .3s}}
+</style>
+</head>
+<body>
+<div style="padding:10px max(5vw,16px);border-bottom:1px solid var(--rule);font:500 15px Inter,system-ui,sans-serif"><a href="../" style="color:inherit;text-decoration:none">&larr; Timothy Gavris portfolio</a></div>
+<header class="band"><div class="wrap">
+<h1>Same answers 45&times; faster; 191&times; faster by skipping 94% of the database</h1>
+<p class="lede">A case study in optimizing a core bioinformatics tool, Smith-Waterman protein search. I benchmarked an exact baseline, profiled it, and applied two optimizations from the literature. Each one is checked against the baseline for speed and for the homologs it finds.</p>
+<div class="figs">
+<div><div class="big">11.7 s</div><div class="lab">baseline, per query vs 1,000 proteins</div></div>
+<div><div class="big b">0.26 s</div><div class="lab">vectorized exact search, 40,000 of 40,000 scores identical</div></div>
+<div><div class="big b" id="k-time">0.061 s</div><div class="lab" id="k-time-l">with k-mer prefilter</div></div>
+<div><div class="big" id="k-rec">98.0%</div><div class="lab">of exhaustive hits still found</div></div>
+</div>
+</div></header>
+
+<section class="band" style="padding-top:0"><div class="wrap main">
+<div>
+<h2 id="tradeoff">Prefilter settings trade speed against remote homologs</h2>
+<p class="note">Each dot is one prefilter setting (x: time per query, log scale; y: share of the hits exhaustive search finds). Choose a setting with the controls.</p>
+<div class="fig" id="fig1"><svg id="s1" role="img" aria-label="Speed versus hits kept for every prefilter setting"></svg></div>
+</div>
+<aside class="panel" aria-label="Choose a prefilter setting">
+<div>
+<label>Seed words</label>
+<div class="seg" id="seg">
+<button type="button" data-t="none" aria-pressed="false">Exact 3-mers</button>
+<button type="button" data-t="13" aria-pressed="false">Similar, T=13</button>
+<button type="button" data-t="12" aria-pressed="true">Similar, T=12</button>
+<button type="button" data-t="11" aria-pressed="false">Similar, T=11</button>
+</div>
+</div>
+<div>
+<label for="S">Ungapped score cutoff S = <span id="Sv">35</span></label>
+<input id="S" type="range" min="20" max="40" step="5" value="35">
+</div>
+<dl class="read">
+<dt>Time per query</dt><dd id="r-t"></dd>
+<dt>Speedup vs baseline</dt><dd id="r-x"></dd>
+<dt>Speedup vs exact A2</dt><dd id="r-x2"></dd>
+<dt>Database aligned</dt><dd id="r-f"></dd>
+<dt>Exhaustive hits kept</dt><dd id="r-r"></dd>
+<dt>Prefilter / align time</dt><dd id="r-pa"></dd>
+</dl>
+<p class="note" style="margin:0">"Similar" words are BLAST-style neighborhoods: every 3-mer scoring at least T against a query 3-mer. Lower T means more seeds and higher sensitivity.</p>
+</aside>
+</div></section>
+
+<section class="band" style="padding-top:0"><div class="wrap two">
+<div>
+<h2 id="lost">Only remote homologs are lost: every setting keeps all hits at 42% identity and above</h2>
+<p class="note">Share of true homologs detected, by identity to the query. Black is exhaustive search (baseline, A1 and A2 are identical); blue is the setting chosen above.</p>
+<div class="fig" id="fig2" style="min-height:300px"><svg id="s2" role="img" aria-label="Detection rate by percent identity"></svg></div>
+</div>
+<div>
+<h2 id="speed">Where the speed came from</h2>
+<p class="note">Seconds per query, log scale. Labels show speedup over the baseline.</p>
+<div class="ladder" id="ladder"></div>
+<p class="note" style="margin-top:16px">Profiling the baseline showed all of its time in the dynamic-programming cell loop, at about 220 ns per cell. A2 runs at about 5 ns per cell.</p>
+</div>
+</div></section>
+
+<section class="band" style="background:var(--panel)"><div class="wrap">
+<h2 id="how">How the pipeline works</h2>
+<p>Exact search aligns the query to every sequence. The prefilter, adapted from BLAST and MMseqs2, finds cheap evidence of similarity first and runs the expensive exact alignment only on sequences that show it.</p>
+<div class="pipe">
+<div class="st"><b>1. Index the database</b>Every 3-mer, with the sequence and position where it occurs. Built once.</div>
+<div class="st"><b>2. Seed</b>Look up the query's 3-mers, or every similar word scoring at least T.</div>
+<div class="st"><b>3. Two hits</b>Keep sequences with at least 2 seeds on the same diagonal, as in BLAST 2.0.</div>
+<div class="st"><b>4. Ungapped score</b>Best ungapped score on that diagonal must reach S (MMseqs2 stage 2).</div>
+<div class="st"><b>5. Exact alignment</b>Vectorized Smith-Waterman (A2) on the survivors. <span class="n" id="p-f"></span></div>
+</div>
+<div class="two" style="margin-top:28px">
+<div>
+<h2 style="font-size:22px">A1 and A2: same maths, fewer Python steps</h2>
+<p><b>A1 (SWIPE, Rognes 2011)</b> fills each DP cell for a batch of database sequences in one vector operation, which is 14&times; faster. <b>A2 (scan-based SW, Khajeh-Saeed et al. 2010)</b> removes the left-to-right dependency on horizontal gaps. That dependency becomes one cumulative maximum, so each query row is a handful of array operations. Together with int16 arithmetic and length-sorted batches of 64, A2 is 45&times; faster with identical scores.</p>
+</div>
+<div>
+<h2 style="font-size:22px">Second round of profiling</h2>
+<p>Once the prefilter was added, it became the bottleneck. About 70% of its time went to diagonal scoring and 27% to rebuilding word neighborhoods for every query. Precomputing the neighbor table once and scoring in int16 made it 2.7&times; faster (0.093 s to 0.035 s per query at T=12) with identical candidate sets.</p>
+</div>
+</div>
+</div></section>
+
+<section class="band"><div class="wrap">
+<div>
+<h2 id="scale">The advantage holds on bigger databases</h2>
+<p class="note">Seconds per query (mean of 5 queries). Larger databases add unrelated proteins. Baseline times are estimated from its measured cost per DP cell.</p>
+<div class="scroll"><table id="scaling"></table></div>
+</div>
+<h2 id="limits" style="margin-top:36px">Limits and next steps</h2>
+<div class="lim">
+<p><b>Synthetic benchmark.</b> 40 protein families were evolved at 12 divergence levels using BLOSUM62-derived substitution probabilities plus indels, alongside 520 unrelated decoys. This gives exact ground truth, but real proteins have low-complexity regions and skewed composition. The next step is SCOPe/ASTRAL, the standard homology benchmark.</p>
+<p><b>No E-values.</b> A hit counts if it outscores every unrelated sequence for that query, the "sensitivity up to the first false positive".</p>
+<p><b>NumPy, not SIMD C.</b> Absolute times are far from SWIPE or MMseqs2. The relative findings are the point. A good extension would be to benchmark against Parasail.</p>
+</div>
+</div></section>
+
+<footer class="band foot"><div class="wrap">
+<h2 style="font-size:22px">References</h2>
+<div class="refs">
+<p>Smith &amp; Waterman (1981) J. Mol. Biol. 147:195; Gotoh (1982) J. Mol. Biol. 162:705.</p>
+<p>Henikoff &amp; Henikoff (1992) Amino acid substitution matrices from protein blocks. PNAS 89:10915.</p>
+<p>Rognes (2011) SWIPE: inter-sequence SIMD parallelisation of Smith-Waterman. BMC Bioinformatics 12:221.</p>
+<p>Khajeh-Saeed, Poole &amp; Perot (2010) Acceleration of the Smith–Waterman algorithm using single and multiple graphics processors. J. Comput. Phys. 229:4247.</p>
+<p>Altschul et al. (1990) BLAST. J. Mol. Biol. 215:403; Altschul et al. (1997) Gapped BLAST and PSI-BLAST. Nucleic Acids Res. 25:3389.</p>
+<p>Steinegger &amp; Söding (2017) MMseqs2. Nat. Biotechnol. 35:1026.</p>
+</div>
+<p class="note" style="margin-top:14px">Built with an AI coding agent that I directed. Benchmarks ran on a 2-core cloud VM with NumPy and were checked against the baseline on all 40,000 query/target pairs.</p>
+</div></footer>
+
+<script>
+{
+const R = {"meta":{"n_queries":40,"n_database":1000,"n_homologs":480,"n_decoys":520,"total_residues":229605,"mean_query_len":229.225,"divergences":[0.1,0.17,0.24,0.3,0.37,0.44,0.51,0.58,0.65,0.71,0.78,0.85],"approx_identity_by_divergence":[0.899925,0.83015,0.76015,0.699925,0.6300250000000001,0.56015,0.49007500000000004,0.419975,0.35032499999999994,0.29012499999999997,0.21995000000000003,0.150375],"gap_open":11,"gap_extend":1,"matrix":"BLOSUM62"},"methods":{"baseline":{"label":"Baseline: pure-Python Smith-Waterman","seconds_per_query":11.743027504724997,"exact":true,"ns_per_cell":223.14240541675446,"detection":{"overall":0.9291666666666667,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.925,0.225],"recall_vs_exhaustive":1.0,"false_positives":0}},"A1":{"label":"A1: batch many targets at once (SWIPE)","seconds_per_query":0.8336494993333569,"exact":true,"queries_timed":3,"detection":{"overall":0.9291666666666667,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.925,0.225],"recall_vs_exhaustive":1.0,"false_positives":0}},"A2":{"label":"A2: + whole-row prefix scan (scan-based SW)","seconds_per_query":0.26170442487502327,"exact":true,"pairs_checked":40000,"batch_size":64,"batch_size_sweep":{"16":0.4612417736000225,"32":0.352029603200026,"64":0.23798913219998213,"128":0.2641369462000057,"256":0.2925551169999835,"1000":0.42916396200002965},"detection":{"overall":0.9291666666666667,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.925,0.225],"recall_vs_exhaustive":1.0,"false_positives":0}},"B_sweep":[{"words":"exact 3-mers","T":null,"S":20,"prefilter_seconds":0.002290941899991594,"align_seconds":0.11901690310000959,"seconds_per_query":0.12130784500000119,"candidates_per_query":368.95,"fraction_aligned":0.36895,"exact_on_candidates":true,"detection":{"overall":0.8770833333333333,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.975,0.775,0.675,0.1],"recall_vs_exhaustive":0.9439461883408071,"false_positives":0}},{"words":"exact 3-mers","T":null,"S":25,"prefilter_seconds":0.002290941899991594,"align_seconds":0.05352638632500088,"seconds_per_query":0.055817328224992475,"candidates_per_query":152.425,"fraction_aligned":0.152425,"exact_on_candidates":true,"detection":{"overall":0.85625,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.975,0.775,0.475,0.05],"recall_vs_exhaustive":0.92152466367713,"false_positives":0}},{"words":"exact 3-mers","T":null,"S":30,"prefilter_seconds":0.002290941899991594,"align_seconds":0.022553687175008007,"seconds_per_query":0.0248446290749996,"candidates_per_query":54.725,"fraction_aligned":0.054725,"exact_on_candidates":true,"detection":{"overall":0.8416666666666667,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.95,0.725,0.4,0.025],"recall_vs_exhaustive":0.905829596412556,"false_positives":0}},{"words":"exact 3-mers","T":null,"S":35,"prefilter_seconds":0.002290941899991594,"align_seconds":0.011442939924995699,"seconds_per_query":0.013733881824987294,"candidates_per_query":22.575,"fraction_aligned":0.022574999999999998,"exact_on_candidates":true,"detection":{"overall":0.8291666666666667,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.925,0.725,0.3,0.0],"recall_vs_exhaustive":0.8923766816143498,"false_positives":0}},{"words":"exact 3-mers","T":null,"S":40,"prefilter_seconds":0.002290941899991594,"align_seconds":0.006106809750008324,"seconds_per_query":0.008397751649999919,"candidates_per_query":13.275,"fraction_aligned":0.013275,"exact_on_candidates":true,"detection":{"overall":0.825,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.925,0.725,0.25,0.0],"recall_vs_exhaustive":0.8878923766816144,"false_positives":0}},{"words":"similar 3-mers (T=13)","T":13,"S":20,"prefilter_seconds":0.014015528824995727,"align_seconds":0.24499352077502295,"seconds_per_query":0.2590090496000187,"candidates_per_query":823.325,"fraction_aligned":0.8233250000000001,"exact_on_candidates":true,"detection":{"overall":0.9208333333333333,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.85,0.2],"recall_vs_exhaustive":0.9910313901345291,"false_positives":0}},{"words":"similar 3-mers (T=13)","T":13,"S":25,"prefilter_seconds":0.014015528824995727,"align_seconds":0.13607240435000562,"seconds_per_query":0.15008793317500135,"candidates_per_query":434.0,"fraction_aligned":0.434,"exact_on_candidates":true,"detection":{"overall":0.9104166666666667,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.975,0.775,0.175],"recall_vs_exhaustive":0.9798206278026906,"false_positives":0}},{"words":"similar 3-mers (T=13)","T":13,"S":30,"prefilter_seconds":0.014015528824995727,"align_seconds":0.05315312397499383,"seconds_per_query":0.06716865279998956,"candidates_per_query":150.05,"fraction_aligned":0.15005000000000002,"exact_on_candidates":true,"detection":{"overall":0.90625,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.975,0.75,0.15],"recall_vs_exhaustive":0.9753363228699552,"false_positives":0}},{"words":"similar 3-mers (T=13)","T":13,"S":35,"prefilter_seconds":0.014015528824995727,"align_seconds":0.018402528449990997,"seconds_per_query":0.03241805727498673,"candidates_per_query":47.525,"fraction_aligned":0.047525,"exact_on_candidates":true,"detection":{"overall":0.9,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.975,0.725,0.1],"recall_vs_exhaustive":0.968609865470852,"false_positives":0}},{"words":"similar 3-mers (T=13)","T":13,"S":40,"prefilter_seconds":0.014015528824995727,"align_seconds":0.010085063225005797,"seconds_per_query":0.024100592050001524,"candidates_per_query":19.875,"fraction_aligned":0.019875,"exact_on_candidates":true,"detection":{"overall":0.8895833333333333,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.975,0.65,0.05],"recall_vs_exhaustive":0.9573991031390134,"false_positives":0}},{"words":"similar 3-mers (T=12)","T":12,"S":20,"prefilter_seconds":0.034886038450008525,"align_seconds":0.2500790411250307,"seconds_per_query":0.28496507957503925,"candidates_per_query":938.2,"fraction_aligned":0.9382,"exact_on_candidates":true,"detection":{"overall":0.9291666666666667,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.925,0.225],"recall_vs_exhaustive":1.0,"false_positives":0}},{"words":"similar 3-mers (T=12)","T":12,"S":25,"prefilter_seconds":0.034886038450008525,"align_seconds":0.17779975802496892,"seconds_per_query":0.21268579647497743,"candidates_per_query":587.8,"fraction_aligned":0.5878,"exact_on_candidates":true,"detection":{"overall":0.91875,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.85,0.175],"recall_vs_exhaustive":0.9887892376681614,"false_positives":0}},{"words":"similar 3-mers (T=12)","T":12,"S":30,"prefilter_seconds":0.034886038450008525,"align_seconds":0.06868655149998518,"seconds_per_query":0.1035725899499937,"candidates_per_query":213.925,"fraction_aligned":0.213925,"exact_on_candidates":true,"detection":{"overall":0.9125,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.8,0.15],"recall_vs_exhaustive":0.9820627802690582,"false_positives":0}},{"words":"similar 3-mers (T=12)","T":12,"S":35,"prefilter_seconds":0.034886038450008525,"align_seconds":0.026481017624990954,"seconds_per_query":0.06136705607499948,"candidates_per_query":64.1,"fraction_aligned":0.06409999999999999,"exact_on_candidates":true,"detection":{"overall":0.9104166666666667,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.8,0.125],"recall_vs_exhaustive":0.9798206278026906,"false_positives":0}},{"words":"similar 3-mers (T=12)","T":12,"S":40,"prefilter_seconds":0.034886038450008525,"align_seconds":0.011455534075003016,"seconds_per_query":0.04634157252501154,"candidates_per_query":23.175,"fraction_aligned":0.023175,"exact_on_candidates":true,"detection":{"overall":0.9020833333333333,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.75,0.075],"recall_vs_exhaustive":0.9708520179372198,"false_positives":0}},{"words":"similar 3-mers (T=11)","T":11,"S":20,"prefilter_seconds":0.08044343785002753,"align_seconds":0.28361557542498306,"seconds_per_query":0.36405901327501056,"candidates_per_query":986.375,"fraction_aligned":0.986375,"exact_on_candidates":true,"detection":{"overall":0.9291666666666667,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.925,0.225],"recall_vs_exhaustive":1.0,"false_positives":0}},{"words":"similar 3-mers (T=11)","T":11,"S":25,"prefilter_seconds":0.08044343785002753,"align_seconds":0.2168473008499916,"seconds_per_query":0.2972907387000191,"candidates_per_query":723.975,"fraction_aligned":0.723975,"exact_on_candidates":true,"detection":{"overall":0.9270833333333334,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.9,0.225],"recall_vs_exhaustive":0.9977578475336323,"false_positives":0}},{"words":"similar 3-mers (T=11)","T":11,"S":30,"prefilter_seconds":0.08044343785002753,"align_seconds":0.09250637807500084,"seconds_per_query":0.17294981592502837,"candidates_per_query":282.05,"fraction_aligned":0.28205,"exact_on_candidates":true,"detection":{"overall":0.9270833333333334,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.9,0.225],"recall_vs_exhaustive":0.9977578475336323,"false_positives":0}},{"words":"similar 3-mers (T=11)","T":11,"S":35,"prefilter_seconds":0.08044343785002753,"align_seconds":0.03406160544999466,"seconds_per_query":0.11450504330002219,"candidates_per_query":80.575,"fraction_aligned":0.08057500000000001,"exact_on_candidates":true,"detection":{"overall":0.925,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.9,0.2],"recall_vs_exhaustive":0.9955156950672646,"false_positives":0}},{"words":"similar 3-mers (T=11)","T":11,"S":40,"prefilter_seconds":0.08044343785002753,"align_seconds":0.013320370724977692,"seconds_per_query":0.09376380857500521,"candidates_per_query":26.125,"fraction_aligned":0.026125,"exact_on_candidates":true,"detection":{"overall":0.9208333333333333,"by_divergence":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.875,0.175],"recall_vs_exhaustive":0.9910313901345291,"false_positives":0}}],"B_index_seconds":1.865948810999953},"scaling":[{"n_database":1000,"baseline_estimated_seconds":12.101615353387626,"A2_seconds":0.30053457280000656,"B_None_25_seconds":0.05207604219995119,"B_12_35_seconds":0.05316886620007608,"B_11_30_seconds":0.18615932640004756},{"n_database":2500,"baseline_estimated_seconds":30.44602084867981,"A2_seconds":0.6842935324000337,"B_None_25_seconds":0.1340431449999869,"B_12_35_seconds":0.15781273220000003,"B_11_30_seconds":0.4457791508000355},{"n_database":5000,"baseline_estimated_seconds":60.76654814906401,"A2_seconds":1.3154146395999304,"B_None_25_seconds":0.24466772620003213,"B_12_35_seconds":0.28012910979996375,"B_11_30_seconds":0.8933806424000522},{"n_database":10000,"baseline_estimated_seconds":121.5850646469812,"A2_seconds":2.8137420096000367,"B_None_25_seconds":0.4677926721999938,"B_12_35_seconds":0.5892374153999753,"B_11_30_seconds":1.7761723845999768},{"n_database":20000,"baseline_estimated_seconds":242.9306848630901,"A2_seconds":5.654061530800073,"B_None_25_seconds":0.9560279471999366,"B_12_35_seconds":1.1514987172000475,"B_11_30_seconds":3.5193063311999593}],"scaling_configs":[{"key":"B_None_25","words":"exact 3-mers","S":25},{"key":"B_12_35","words":"similar 3-mers (T=12)","S":35},{"key":"B_11_30","words":"similar 3-mers (T=11)","S":30}]};
+const M = R.methods, base = M.baseline.seconds_per_query, a2 = M.A2.seconds_per_query;
+const sweep = M.B_sweep;
+const tkey = c => c.T === null ? 'none' : String(c.T);
+const state = {t: '12', S: 35};
+const $ = id => document.getElementById(id);
+const fmtS = s => s >= 1 ? s.toFixed(1) + ' s' : s >= 0.1 ? s.toFixed(2) + ' s' : s.toFixed(3) + ' s';
+const pct = x => (100 * x).toFixed(1) + '%';
+const sel = () => sweep.find(c => tkey(c) === state.t && c.S === state.S);
+const ns = 'http://www.w3.org/2000/svg';
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const groups = [['none', 'Exact 3-mers'], ['13', 'T=13'], ['12', 'T=12'], ['11', 'T=11']];
+
+const s1 = $('s1');
+const draw1 = () => {
+  const W = s1.clientWidth, H = s1.clientHeight, m = {l: 48, r: W < 520 ? 16 : 70, t: 16, b: 42};
+  const x0 = Math.log10(0.006), x1 = Math.log10(16);
+  const X = v => m.l + (Math.log10(v) - x0) / (x1 - x0) * (W - m.l - m.r);
+  const Y = v => m.t + (100.6 - v) / (100.6 - 87) * (H - m.t - m.b);
+  let g = '';
+  [88, 90, 92, 94, 96, 98, 100].forEach(v => { g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--rule)"/><text x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end">${v}%</text>`; });
+  const ticks = W < 520 ? [0.01, 0.1, 1, 10] : [0.01, 0.03, 0.1, 0.3, 1, 3, 10];
+  ticks.forEach(v => { g += `<line x1="${X(v)}" x2="${X(v)}" y1="${m.t}" y2="${H - m.b}" stroke="var(--rule)"/><text x="${X(v)}" y="${H - m.b + 18}" text-anchor="middle">${v} s</text>`; });
+  g += `<text x="${(m.l + W - m.r) / 2}" y="${H - 4}" text-anchor="middle">seconds per query</text>`;
+  groups.forEach(([k, name]) => {
+    const pts = sweep.filter(c => tkey(c) === k).sort((a, b) => a.seconds_per_query - b.seconds_per_query);
+    const on = k === state.t;
+    const col = on ? 'var(--blue)' : 'var(--grey)';
+    g += `<polyline fill="none" stroke="${col}" stroke-width="${on ? 2.5 : 1.2}" points="${pts.map(c => X(c.seconds_per_query) + ',' + Y(100 * c.detection.recall_vs_exhaustive)).join(' ')}"/>`;
+    pts.forEach(c => { g += `<circle cx="${X(c.seconds_per_query)}" cy="${Y(100 * c.detection.recall_vs_exhaustive)}" r="${on ? 4 : 3}" fill="${col}"/>`; });
+    const last = pts[0];
+    if (W >= 520) g += `<text x="${X(last.seconds_per_query) - 8}" y="${Y(100 * last.detection.recall_vs_exhaustive) + 4}" text-anchor="end" style="fill:${col}">${name}</text>`;
+  });
+  [[base, 'Baseline'], [M.A1.seconds_per_query, 'A1'], [a2, 'A2 exact']].forEach(([t, n], i) => {
+    g += `<circle cx="${X(t)}" cy="${Y(100)}" r="5" fill="var(--ink)"/><text x="${X(t)}" y="${Y(100) - 10}" text-anchor="middle" style="fill:var(--ink)">${n}</text>`;
+  });
+  const c = sel();
+  g += `<circle class="hl" cx="${X(c.seconds_per_query)}" cy="${Y(100 * c.detection.recall_vs_exhaustive)}" r="9" fill="none" stroke="var(--blue)" stroke-width="2.5"/>`;
+  s1.innerHTML = g;
+};
+
+const s2 = $('s2');
+const ids = R.meta.approx_identity_by_divergence.map(v => 100 * v);
+const draw2 = () => {
+  const W = s2.clientWidth, H = s2.clientHeight, m = {l: 44, r: 14, t: 14, b: 42};
+  const X = v => m.l + (92 - v) / (92 - 13) * (W - m.l - m.r);
+  const Y = v => m.t + (102 - v) / 104 * (H - m.t - m.b);
+  let g = '';
+  [0, 25, 50, 75, 100].forEach(v => { g += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--rule)"/><text x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end">${v}%</text>`; });
+  (W < 520 ? [90, 60, 30] : [90, 75, 60, 45, 30, 15]).forEach(v => { g += `<text x="${X(v)}" y="${H - m.b + 18}" text-anchor="middle">${v}%</text>`; });
+  g += `<text x="${(m.l + W - m.r) / 2}" y="${H - 4}" text-anchor="middle">identity to query (decreasing)</text>`;
+  const line = (arr, col, w) => `<polyline fill="none" stroke="${col}" stroke-width="${w}" points="${arr.map((v, i) => X(ids[i]) + ',' + Y(100 * v)).join(' ')}"/>` + arr.map((v, i) => `<circle cx="${X(ids[i])}" cy="${Y(100 * v)}" r="3.5" fill="${col}"/>`).join('');
+  const ex = M.baseline.detection.by_divergence, c = sel().detection.by_divergence;
+  g += line(ex, 'var(--ink)', 2) + line(c, 'var(--blue)', 2.5);
+  const i = ex.length - 2;
+  if (ex[i] - c[i] > 0.02) g += `<line x1="${X(ids[i]) + 6}" x2="${X(ids[i]) + 6}" y1="${Y(100 * ex[i])}" y2="${Y(100 * c[i])}" stroke="var(--coral)" stroke-width="3"/><text x="${X(ids[i]) - 8}" y="${(Y(100 * ex[i]) + Y(100 * c[i])) / 2 + 4}" text-anchor="end" style="fill:var(--coral)">${Math.round(100 * (ex[i] - c[i]))} pts lost at ${Math.round(ids[i])}%</text>`;
+  s2.innerHTML = g;
+};
+
+const ladder = () => {
+  const c = sel();
+  const rows = [['Baseline, pure Python', base, ''], ['A1 batch targets', M.A1.seconds_per_query, 'a'], ['A2 + row scan (exact)', a2, 'a'], ['B prefilter + A2', c.seconds_per_query, 'p']];
+  const lo = Math.log10(0.004), hi = Math.log10(15);
+  $('ladder').innerHTML = rows.map(([n, t, k]) => `<div class="row"><span>${n}</span><div class="bar ${k}" style="width:${(100 * (Math.log10(t) - lo) / (hi - lo)).toFixed(1)}%"></div><span class="v">${t === base ? '1&times;' : Math.round(base / t) + '&times;'}</span></div>`).join('');
+};
+
+const table = () => {
+  const cfg = R.scaling_configs;
+  const head = ['Database', 'Baseline (est.)', 'A2 exact', ...cfg.map(c => (c.words.startsWith('exact') ? 'Exact' : c.words.replace('similar 3-mers ', '').replace(/[()]/g, '')) + ', S=' + c.S)];
+  $('scaling').innerHTML = `<thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>` + R.scaling.map(r => `<tr><td>${r.n_database.toLocaleString()}</td><td>${fmtS(r.baseline_estimated_seconds)}</td><td>${fmtS(r.A2_seconds)}</td>${cfg.map(c => `<td>${fmtS(r[c.key + '_seconds'])}</td>`).join('')}</tr>`).join('') + '</tbody>';
+};
+
+const readout = () => {
+  const c = sel();
+  $('Sv').textContent = state.S;
+  $('r-t').textContent = fmtS(c.seconds_per_query);
+  $('r-x').innerHTML = Math.round(base / c.seconds_per_query) + '&times;';
+  $('r-x2').innerHTML = (a2 / c.seconds_per_query).toFixed(1) + '&times;';
+  $('r-f').textContent = pct(c.fraction_aligned);
+  $('r-r').textContent = pct(c.detection.recall_vs_exhaustive);
+  $('r-pa').textContent = fmtS(c.prefilter_seconds) + ' / ' + fmtS(c.align_seconds);
+  $('k-time').textContent = fmtS(c.seconds_per_query);
+  $('k-time-l').textContent = 'with k-mer prefilter (' + (c.T === null ? 'exact words' : 'T=' + c.T) + ', S=' + c.S + '), ' + Math.round(base / c.seconds_per_query) + '× faster';
+  $('k-rec').textContent = pct(c.detection.recall_vs_exhaustive);
+  $('p-f').textContent = pct(c.fraction_aligned) + ' aligned';
+};
+
+const all = () => { readout(); draw1(); draw2(); ladder(); };
+document.querySelectorAll('#seg button').forEach(b => b.addEventListener('click', () => {
+  state.t = b.dataset.t;
+  document.querySelectorAll('#seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  all();
+}));
+$('S').addEventListener('input', e => { state.S = +e.target.value; all(); });
+table();
+all();
+const ro1 = new ResizeObserver(draw1); ro1.observe(s1);
+const ro2 = new ResizeObserver(draw2); ro2.observe(s2);
+}
+</script>
+</body>
+</html>

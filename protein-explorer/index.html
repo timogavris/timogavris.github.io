@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protein Search Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday learning tool, clear and calm
+   IDEA a lab bench: put a protein in, read the hit list, look inside one comparison
+   PICTURE the live alignment grid (heat map + best path) and the hit list with score bars
+   COLOUR white / ink, ultramarine for scores and paths, green for true relatives, coral for decoys
+   TYPE Spectral 500 headings + Inter text + JetBrains Mono for sequences
+   LAYOUT tabs on top; search = input left, hits right; stacks on phones */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#0d0e18);--ink:light-dark(#14110f,#e9e8f2);--soft:light-dark(#5d5a66,#a3a1b5);--rule:light-dark(#e3e1ea,#262839);--panel:light-dark(#f6f6fb,#151729);--blue:light-dark(#1d2bd8,#8d97ff);--green:light-dark(#127a3e,#5fd48e);--coral:light-dark(#c2412d,#ff8a75)}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(20px,3vw,40px) max(4vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+h1,h2{font-family:Spectral,Georgia,serif;font-weight:500;letter-spacing:-.02em;line-height:1.08;margin:0}
+h1{font-size:clamp(28px,3.6vw,40px)}
+h2{font-size:clamp(21px,2.2vw,26px);margin-bottom:8px}
+p{margin:0 0 10px;max-width:72ch}
+.soft{color:var(--soft);font-size:15px}
+nav{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+nav button,.btn{font:500 15px Inter,sans-serif;min-height:44px;padding:0 16px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);border-radius:8px;cursor:pointer}
+nav button[aria-selected=true],.btn.go{background:var(--blue);border-color:var(--blue);color:#fff}
+button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.view{display:none}
+.view.on{display:block}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:28px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+label{font-size:14px;font-weight:600}
+select,textarea,input[type=text]{font:16px Inter,sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:8px;padding:10px;width:100%}
+textarea{font:14px/1.5 'JetBrains Mono',ui-monospace,monospace;min-height:120px;resize:vertical;overflow-wrap:anywhere}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.status{font-size:14px;color:var(--soft);min-height:1.5em}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--rule);text-align:left;white-space:nowrap}
+th{font-weight:600;border-bottom:1px solid var(--ink)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--panel)}
+tr.sel{background:color-mix(in srgb,var(--blue) 12%,var(--bg))}
+.barc{width:34%;min-width:80px}
+.bar{height:10px;border-radius:2px;background:var(--blue)}
+.yes{color:var(--green);font-weight:600}
+.no{color:var(--coral)}
+.line{font-size:14px;margin:8px 0;padding:8px 10px;border-left:3px solid var(--coral);background:var(--panel)}
+.gridwrap{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:24px;align-items:start}
+.cv{position:relative;width:100%;aspect-ratio:1/1;max-height:560px;border:1px solid var(--rule);border-radius:6px;overflow:hidden;background:var(--bg)}
+.cv canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(7em,1fr));gap:10px 18px;margin:6px 0 12px}
+.big{font-family:Spectral,Georgia,serif;font-size:30px;line-height:1;white-space:nowrap}
+.lab{font-size:13px;color:var(--soft)}
+pre.aln{font:13px/1.45 'JetBrains Mono',ui-monospace,monospace;background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:12px;overflow-x:auto;margin:0}
+.m{color:var(--blue);font-weight:600}
+.tiny td,.tiny th{text-align:center;padding:4px 6px;font-variant-numeric:tabular-nums;border:1px solid var(--rule);min-width:2.2em}
+.tiny th{background:var(--panel);font-family:'JetBrains Mono',monospace}
+.tiny td.p{background:var(--blue);color:#fff;font-weight:600}
+.tiny td.z{color:var(--soft)}
+.inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(14em,1fr));gap:12px;margin:10px 0 16px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+@media(max-width:860px){.two,.gridwrap{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){th,td{padding:6px 4px;font-size:13px}.hide-s{display:none}}
+</style>
+</head>
+<body>
+<div style="padding:10px max(5vw,16px);border-bottom:1px solid var(--rule);font:500 15px Inter,system-ui,sans-serif"><a href="../" style="color:inherit;text-decoration:none">&larr; Timothy Gavris portfolio</a></div>
+<header class="band" style="padding-bottom:8px"><div class="wrap">
+<h1>Protein Search Explorer</h1>
+<p class="soft" style="margin-top:8px">Put in a protein, search it against the 1,000-protein test database with Smith-Waterman, and look inside any comparison. Everything runs in your browser.</p>
+<nav role="tablist" aria-label="Views">
+<button role="tab" id="t-search" aria-selected="true" data-v="search">1. Search</button>
+<button role="tab" id="t-grid" aria-selected="false" data-v="grid">2. Inside one comparison</button>
+<button role="tab" id="t-tiny" aria-selected="false" data-v="tiny">3. Tiny worked example</button>
+<button role="tab" id="t-db" aria-selected="false" data-v="db">4. The database</button>
+</nav>
+</div></header>
+
+<main class="band" style="padding-top:12px"><div class="wrap">
+
+<section class="view on" id="v-search">
+<div class="two">
+<div class="panel">
+<div>
+<label for="qsel">Pick a test protein</label>
+<select id="qsel"></select>
+</div>
+<div>
+<label for="qseq">or paste any protein sequence (20 amino-acid letters)</label>
+<textarea id="qseq" spellcheck="false"></textarea>
+</div>
+<div class="row"><button class="btn go" id="run" type="button">Search the database</button></div>
+<div class="status" id="st"></div>
+<p class="soft" style="margin:0">The search compares your protein with each of the 1,000 database proteins and gives each one a similarity score. Higher means more alike. Click any result to look inside that comparison.</p>
+</div>
+<div>
+<h2 id="hits-h">Top matches</h2>
+<div id="thr"></div>
+<div class="scroll"><table id="hits"></table></div>
+</div>
+</div>
+</section>
+
+<section class="view" id="v-grid">
+<h2 id="g-title">Inside one comparison</h2>
+<p class="soft">This is the grid Smith-Waterman fills in. Your protein runs down the side and the database protein across the top. Each square holds the best score of any alignment ending there, and darker blue means higher. The red line is the best alignment, traced back from the highest square.</p>
+<div class="gridwrap">
+<div><div class="cv"><canvas id="cv"></canvas></div><p class="soft" id="g-dims" style="margin-top:6px"></p></div>
+<div>
+<div class="stats" id="g-stats"></div>
+<label>The best alignment</label>
+<p class="soft" style="margin:2px 0 8px">Top line: your protein. Bottom: the database protein. <span class="mono">|</span> marks an identical letter, <span class="mono">+</span> a similar one, and <span class="mono">-</span> a gap.</p>
+<pre class="aln" id="aln"></pre>
+</div>
+</div>
+</section>
+
+<section class="view" id="v-tiny">
+<h2>The grid, with real numbers</h2>
+<p>Here is the same algorithm on two short sequences, so you can see every number. Each square takes the <b>best</b> of four options:</p>
+<ol class="soft" style="max-width:72ch;margin-top:0">
+<li><b>Diagonal:</b> the square up-left plus the score for this pair of letters (from BLOSUM62).</li>
+<li><b>From the left:</b> a gap in the side sequence (costs 12 to open, then 1 per extra letter).</li>
+<li><b>From above:</b> a gap in the top sequence (same cost).</li>
+<li><b>Zero:</b> start fresh. This is what makes it a <i>local</i> alignment.</li>
+</ol>
+<div class="inputs">
+<div><label for="ta">Side sequence (up to 25 letters)</label><input type="text" id="ta" class="mono" value="PHEAGAWCHEE" maxlength="25" spellcheck="false"></div>
+<div><label for="tb">Top sequence (up to 25 letters)</label><input type="text" id="tb" class="mono" value="HEAGAWHEE" maxlength="25" spellcheck="false"></div>
+</div>
+<div class="scroll"><table class="tiny" id="tiny"></table></div>
+<p class="soft" id="tiny-sum" style="margin-top:10px"></p>
+</section>
+
+<section class="view" id="v-db">
+<h2>The 1,000-protein test database</h2>
+<p class="soft">These proteins were generated by <span class="mono">make_benchmark.py</span>. 480 are relatives of the 40 test proteins, evolved with mutations so that they share 15% to 90% of their letters. The other 520 are random decoys related to nothing. Click a row to search with that protein.</p>
+<div class="row" style="margin:10px 0">
+<div style="flex:1 1 16em"><label for="dbf">Filter</label><input type="text" id="dbf" placeholder="e.g. F07, DECOY, or a letter pattern like WWH" spellcheck="false"></div>
+</div>
+<div class="status" id="dbc"></div>
+<div class="scroll"><table id="dbt"></table></div>
+</section>
+
+</div></main>
+
+<script>
+{
+const AA = 'ARNDCQEGHILKMFPSTWYV';
+const B = `4 -1 -2 -2 0 -1 -1 0 -2 -1 -1 -1 -1 -2 -1 1 0 -3 -2 0|-1 5 0 -2 -3 1 0 -2 0 -3 -2 2 -1 -3 -2 -1 -1 -3 -2 -3|-2 0 6 1 -3 0 0 0 1 -3 -3 0 -2 -3 -2 1 0 -4 -2 -3|-2 -2 1 6 -3 0 2 -1 -1 -3 -4 -1 -3 -3 -1 0 -1 -4 -3 -3|0 -3 -3 -3 9 -3 -4 -3 -3 -1 -1 -3 -1 -2 -3 -1 -1 -2 -2 -1|-1 1 0 0 -3 5 2 -2 0 -3 -2 1 0 -3 -1 0 -1 -2 -1 -2|-1 0 0 2 -4 2 5 -2 0 -3 -3 1 -2 -3 -1 0 -1 -3 -2 -2|0 -2 0 -1 -3 -2 -2 6 -2 -4 -4 -2 -3 -3 -2 0 -2 -2 -3 -3|-2 0 1 -1 -3 0 0 -2 8 -3 -3 -1 -2 -1 -2 -1 -2 -2 2 -3|-1 -3 -3 -3 -1 -3 -3 -4 -3 4 2 -3 1 0 -3 -2 -1 -3 -1 3|-1 -2 -3 -4 -1 -2 -3 -4 -3 2 4 -2 2 0 -3 -2 -1 -2 -1 1|-1 2 0 -1 -3 1 1 -2 -1 -3 -2 5 -1 -3 -1 0 -1 -3 -2 -2|-1 -1 -2 -3 -1 0 -2 -3 -2 1 2 -1 5 0 -2 -1 -1 -1 -1 1|-2 -3 -3 -3 -2 -3 -3 -3 -1 0 0 -3 0 6 -4 -2 -2 1 3 -1|-1 -2 -2 -1 -3 -1 -1 -2 -2 -3 -3 -1 -2 -4 7 -1 -1 -4 -3 -2|1 -1 1 0 -1 0 0 0 -1 -2 -2 0 -1 -2 -1 4 1 -3 -2 -2|0 -1 0 -1 -1 -1 -1 -2 -2 -1 -1 -1 -1 -2 -1 1 5 -2 -2 0|-3 -3 -4 -4 -2 -2 -3 -2 -2 -3 -2 -3 -1 1 -4 -3 -2 11 2 -3|-2 -2 -2 -3 -2 -1 -2 -3 2 -1 -1 -2 -1 3 -3 -2 -2 2 7 -1|0 -3 -3 -3 -1 -2 -2 -3 -3 3 1 -2 1 -1 -2 -2 0 -3 -1 4`;
+const M = B.split('|').map(r => r.trim().split(/\s+/).map(Number));
+const GO = 11, GE = 1, FIRST = GO + GE, NEG = -1e9;
+const IDX = {}; [...AA].forEach((a, i) => IDX[a] = i);
+const enc = s => Int8Array.from([...s], c => IDX[c]);
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const clean = s => s.toUpperCase().replace(/[^A-Z]/g, '');
+
+let D = null, dbEnc = [], cur = {q: null, name: '', family: null, scores: null, order: []}, pick = null;
+
+/* score-only Smith-Waterman (Gotoh affine gaps), two rows of memory */
+const swScore = (q, t) => {
+  const n = t.length; let Hp = new Int32Array(n + 1), Hc = new Int32Array(n + 1);
+  const F = new Int32Array(n + 1).fill(NEG); let best = 0;
+  for (let i = 0; i < q.length; i++) {
+    const row = M[q[i]]; let E = NEG; Hc[0] = 0;
+    for (let j = 1; j <= n; j++) {
+      E = Math.max(E - GE, Hc[j - 1] - FIRST);
+      const f = Math.max(F[j] - GE, Hp[j] - FIRST); F[j] = f;
+      let h = Hp[j - 1] + row[t[j - 1]]; if (E > h) h = E; if (f > h) h = f; if (h < 0) h = 0;
+      Hc[j] = h; if (h > best) best = h;
+    }
+    const tmp = Hp; Hp = Hc; Hc = tmp;
+  }
+  return best;
+};
+
+/* full-matrix version with traceback, for looking inside one comparison */
+const swFull = (q, t) => {
+  const m = q.length, n = t.length, W = n + 1, sz = (m + 1) * W;
+  const H = new Int32Array(sz), E = new Int32Array(sz).fill(NEG), F = new Int32Array(sz).fill(NEG);
+  let best = 0, bi = 0, bj = 0;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+    const k = i * W + j;
+    E[k] = Math.max(E[k - 1] - GE, H[k - 1] - FIRST);
+    F[k] = Math.max(F[k - W] - GE, H[k - W] - FIRST);
+    H[k] = Math.max(0, H[k - W - 1] + M[q[i - 1]][t[j - 1]], E[k], F[k]);
+    if (H[k] > best) { best = H[k]; bi = i; bj = j; }
+  }
+  let i = bi, j = bj, st = 'H'; const path = [], A = [], Bt = [];
+  while (i > 0 && j > 0) {
+    const k = i * W + j;
+    if (st === 'H') {
+      if (H[k] === 0) break;
+      path.push([i, j]);
+      if (H[k] === H[k - W - 1] + M[q[i - 1]][t[j - 1]]) { A.push(q[i - 1]); Bt.push(t[j - 1]); i--; j--; }
+      else if (H[k] === E[k]) st = 'E'; else st = 'F';
+    } else if (st === 'E') {
+      path.push([i, j]); A.push(-1); Bt.push(t[j - 1]);
+      st = E[k] === H[k - 1] - FIRST ? 'H' : 'E'; j--;
+    } else {
+      path.push([i, j]); A.push(q[i - 1]); Bt.push(-1);
+      st = F[k] === H[k - W] - FIRST ? 'H' : 'F'; i--;
+    }
+  }
+  return {H, m, n, best, bi, bj, path: path.reverse(), a: A.reverse(), b: Bt.reverse(), si: i, sj: j};
+};
+
+/* ---------- 1. search ---------- */
+const kind = row => row[1] < 0 ? 'decoy' : 'relative';
+const runSearch = () => {
+  const raw = clean($('qseq').value);
+  if (raw.length < 5) { $('st').textContent = 'Please enter at least 5 amino-acid letters.'; return; }
+  const bad = [...new Set([...raw].filter(c => !(c in IDX)))];
+  if (bad.length) { $('st').textContent = 'These letters are not amino acids: ' + bad.join(', ') + '. Use only ' + AA + '.'; return; }
+  const qi = D.q.findIndex(x => x[2] === raw);
+  cur = {q: enc(raw), name: qi >= 0 ? D.q[qi][0] : 'your protein', family: qi >= 0 ? D.q[qi][1] : null, scores: new Int32Array(dbEnc.length), order: []};
+  $('run').disabled = true;
+  const t0 = performance.now(); let k = 0;
+  const step = () => {
+    const end = Math.min(k + 60, dbEnc.length);
+    for (; k < end; k++) cur.scores[k] = swScore(cur.q, dbEnc[k]);
+    $('st').textContent = `Comparing… ${k} of ${dbEnc.length} proteins`;
+    if (k < dbEnc.length) setTimeout(step, 0);
+    else {
+      const ms = performance.now() - t0;
+      $('st').textContent = `Compared ${cur.q.length} letters against ${dbEnc.length} proteins in ${(ms / 1000).toFixed(1)} s (about ${(cur.q.length * D.cells / ms / 1000).toFixed(0)} million grid squares per second).`;
+      $('run').disabled = false; showHits();
+    }
+  };
+  setTimeout(step, 20);
+};
+const showHits = () => {
+  const s = cur.scores, n = s.length;
+  cur.order = [...s.keys()].sort((a, b) => s[b] - s[a]);
+  // the "chance line": best score of anything unrelated (all non-family proteins if we know the family, else the random decoys)
+  const unrelated = j => cur.family === null ? D.db[j][1] < 0 : D.db[j][1] !== cur.family;
+  let decoyMax = 0; for (let j = 0; j < n; j++) if (unrelated(j) && s[j] > decoyMax) decoyMax = s[j];
+  const top = cur.order.slice(0, 25), mx = s[top[0]] || 1;
+  $('hits-h').textContent = 'Top 25 matches for ' + cur.name;
+  let line = cur.family === null
+    ? `The best score from any of the 520 random decoys is <b>${decoyMax}</b>. Scores well above that line are very unlikely to be chance.`
+    : `The best score from any protein <i>unrelated</i> to ${cur.name} is <b>${decoyMax}</b>. That is the "chance line": anything above it counts as found.`;
+  if (cur.family !== null) {
+    const rel = D.db.map((r, j) => j).filter(j => D.db[j][1] === cur.family);
+    const found = rel.filter(j => s[j] > decoyMax).length;
+    line += ` ${cur.name} has ${rel.length} true relatives in the database; ${found} score above the line.`;
+  }
+  $('thr').innerHTML = `<div class="line">${line}</div>`;
+  const truth = j => { const r = D.db[j]; if (cur.family === null) return r[1] < 0 ? '<span class="no">random decoy</span>' : `relative of Q${String(r[1]).padStart(2, '0')}`; return r[1] === cur.family ? `<span class="yes">yes, ~${Math.round(100 * r[2])}% same</span>` : '<span class="no">no</span>'; };
+  $('hits').innerHTML = `<thead><tr><th class="num">#</th><th>Database protein</th><th class="num hide-s">Length</th><th class="num">Score</th><th class="barc hide-s"></th><th>${cur.family === null ? 'What it is' : 'Truly related?'}</th></tr></thead><tbody>` +
+    top.map((j, r) => `<tr data-j="${j}"><td class="num">${r + 1}</td><td class="mono">${esc(D.db[j][0])}</td><td class="num hide-s">${D.db[j][3].length}</td><td class="num">${s[j]}</td><td class="barc hide-s"><div class="bar" style="width:${(100 * s[j] / mx).toFixed(1)}%"></div></td><td>${truth(j)}</td></tr>`).join('') + '</tbody>';
+  pick = top[0]; drawGrid();
+};
+$('hits').addEventListener('click', e => { const tr = e.target.closest('tr[data-j]'); if (!tr) return; pick = +tr.dataset.j; drawGrid(); show('grid'); });
+$('run').addEventListener('click', runSearch);
+$('qsel').addEventListener('change', e => { $('qseq').value = D.q[+e.target.value][2]; runSearch(); });
+
+/* ---------- 2. inside one comparison ---------- */
+const resolved = v => { const el = document.createElement('span'); el.style.color = `var(${v})`; document.body.appendChild(el); const c = getComputedStyle(el).color; el.remove(); return c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number); };
+const drawGrid = () => {
+  if (pick === null || !cur.q) return;
+  const t = dbEnc[pick], R = swFull(cur.q, t), r = D.db[pick];
+  $('g-title').textContent = `${cur.name} vs ${r[0]}`;
+  $('g-dims').textContent = `${R.m} × ${R.n} = ${(R.m * R.n).toLocaleString()} squares filled for this one comparison.`;
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  cv.width = R.n; cv.height = R.m;
+  const img = ctx.createImageData(R.n, R.m), [br, bg, bb] = resolved('--blue'), [kr, kg, kb] = resolved('--bg');
+  const mx = Math.max(1, R.best);
+  for (let i = 1; i <= R.m; i++) for (let j = 1; j <= R.n; j++) {
+    const a = Math.pow(R.H[i * (R.n + 1) + j] / mx, 0.6), p = ((i - 1) * R.n + (j - 1)) * 4;
+    img.data[p] = kr + (br - kr) * a; img.data[p + 1] = kg + (bg - kg) * a; img.data[p + 2] = kb + (bb - kb) * a; img.data[p + 3] = 255;
+  }
+  const [cr, cg, cb] = resolved('--coral');
+  for (const [i, j] of R.path) { const p = ((i - 1) * R.n + (j - 1)) * 4; img.data[p] = cr; img.data[p + 1] = cg; img.data[p + 2] = cb; }
+  ctx.putImageData(img, 0, 0);
+  let same = 0, sim = 0, gaps = 0; const L = R.a.length;
+  let top = '', mid = '', bot = '';
+  for (let k = 0; k < L; k++) {
+    const x = R.a[k], y = R.b[k];
+    if (x < 0 || y < 0) { gaps++; top += x < 0 ? '-' : AA[x]; bot += y < 0 ? '-' : AA[y]; mid += ' '; continue; }
+    top += AA[x]; bot += AA[y];
+    if (x === y) { same++; mid += '|'; } else if (M[x][y] > 0) { sim++; mid += '+'; } else mid += ' ';
+  }
+  const stat = (v, l) => `<div><div class="big">${v}</div><div class="lab">${l}</div></div>`;
+  $('g-stats').innerHTML = stat(R.best, 'score') + stat(L ? Math.round(100 * same / L) + '%' : '–', 'identical letters') + stat(L, 'alignment length') + stat(gaps, 'gap positions');
+  let out = '';
+  for (let k = 0; k < L; k += 50) {
+    const a0 = R.si + [...R.a.slice(0, k)].filter(x => x >= 0).length + 1, b0 = R.sj + [...R.b.slice(0, k)].filter(x => x >= 0).length + 1;
+    const mline = esc(mid.slice(k, k + 50)).replace(/\|/g, '<span class="m">|</span>');
+    out += `${String(a0).padStart(4)} ${top.slice(k, k + 50)}\n     ${mline}\n${String(b0).padStart(4)} ${bot.slice(k, k + 50)}\n\n`;
+  }
+  $('aln').innerHTML = L ? out.trimEnd() : 'No positive-scoring alignment: these two proteins share nothing.';
+  document.querySelectorAll('#hits tr').forEach(tr => tr.classList.toggle('sel', +tr.dataset.j === pick));
+};
+
+/* ---------- 3. tiny worked example ---------- */
+const tiny = () => {
+  const a = clean($('ta').value).replace(/[^ARNDCQEGHILKMFPSTWYV]/g, '').slice(0, 25), b = clean($('tb').value).replace(/[^ARNDCQEGHILKMFPSTWYV]/g, '').slice(0, 25);
+  if (!a || !b) { $('tiny').innerHTML = ''; $('tiny-sum').textContent = 'Type amino-acid letters in both boxes.'; return; }
+  const R = swFull(enc(a), enc(b)), on = new Set(R.path.map(([i, j]) => i + ',' + j));
+  let h = '<tr><th></th><th></th>' + [...b].map(c => `<th>${c}</th>`).join('') + '</tr>';
+  for (let i = 0; i <= R.m; i++) {
+    h += `<tr><th>${i ? a[i - 1] : ''}</th>`;
+    for (let j = 0; j <= R.n; j++) { const v = R.H[i * (R.n + 1) + j]; h += `<td class="${on.has(i + ',' + j) ? 'p' : v === 0 ? 'z' : ''}">${v}</td>`; }
+    h += '</tr>';
+  }
+  $('tiny').innerHTML = h;
+  const al = (arr, s) => arr.map(x => x < 0 ? '-' : AA[x]).join('');
+  $('tiny-sum').innerHTML = `Highest square: <b>${R.best}</b>, which is the alignment score. Following the blue squares back from it gives the best alignment: <span class="mono">${al(R.a)}</span> over <span class="mono">${al(R.b)}</span>. The full search does exactly this, but with grids of about 60,000 squares, 1,000 times per search.`;
+};
+$('ta').addEventListener('input', tiny); $('tb').addEventListener('input', tiny);
+
+/* ---------- 4. database ---------- */
+const dbList = () => {
+  const f = $('dbf').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const rows = D.db.map((r, j) => j).filter(j => !f || D.db[j][0].replace(/[^A-Z0-9]/g, '').includes(f) || D.db[j][3].includes(f));
+  $('dbc').textContent = `${rows.length.toLocaleString()} of 1,000 proteins${rows.length > 100 ? ', showing the first 100' : ''}`;
+  $('dbt').innerHTML = '<thead><tr><th>Name</th><th>What it is</th><th class="num">Length</th><th>Sequence (start)</th></tr></thead><tbody>' +
+    rows.slice(0, 100).map(j => { const r = D.db[j]; return `<tr data-j="${j}"><td class="mono">${esc(r[0])}</td><td>${r[1] < 0 ? 'random decoy' : `relative of Q${String(r[1]).padStart(2, '0')}, ~${Math.round(100 * r[2])}% same`}</td><td class="num">${r[3].length}</td><td class="mono">${r[3].slice(0, 30)}…</td></tr>`; }).join('') + '</tbody>';
+};
+$('dbf').addEventListener('input', dbList);
+$('dbt').addEventListener('click', e => { const tr = e.target.closest('tr[data-j]'); if (!tr) return; $('qseq').value = D.db[+tr.dataset.j][3]; $('qsel').selectedIndex = -1; show('search'); runSearch(); });
+
+/* ---------- tabs ---------- */
+const show = v => {
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.v === v)));
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
+};
+document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => show(b.dataset.v)));
+
+/* ---------- boot ---------- */
+const boot = data => {
+  D = data; dbEnc = D.db.map(r => enc(r[3])); D.cells = D.db.reduce((s, r) => s + r[3].length, 0);
+  $('qsel').innerHTML = D.q.map((r, i) => `<option value="${i}">${r[0]} (${r[2].length} letters, 12 relatives in the database)</option>`).join('');
+  $('qseq').value = D.q[0][2];
+  tiny(); dbList(); runSearch();
+  const h = location.hash.slice(1); if (['search', 'grid', 'tiny', 'db'].includes(h)) show(h);
+};
+const INLINE = /*DATA*/null;
+if (INLINE) boot(INLINE);
+else fetch('data.json').then(r => r.json()).then(boot).catch(() => { $('st').textContent = 'Could not load the database file.'; });
+}
+</script>
+</body>
+</html>
