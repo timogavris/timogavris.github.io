@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How A1 and A2 Work</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE learning tool shown in an interview, calm and clear
+   IDEA a lab-bench demonstration: three ways of filling the same comparison grids, side by side
+   PICTURE three lanes of labelled grids filling in step by step, with live step counters
+   COLOUR white / ink, ultramarine for filled squares, amber for the squares being filled now
+   TYPE Spectral 500 headings + Inter text + JetBrains Mono for amino-acid letters
+   LAYOUT explanation and axis key on top, controls, then the three lanes stacked; grids wrap on phones */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#0d0e18);--ink:light-dark(#14110f,#e9e8f2);--soft:light-dark(#5d5a66,#a3a1b5);--rule:light-dark(#e3e1ea,#262839);--panel:light-dark(#f6f6fb,#151729);--empty:light-dark(#ecebf2,#1e2034);--blue:light-dark(#1d2bd8,#8d97ff);--fill:light-dark(#c9cdfb,#2c3587);--now:light-dark(#f2a623,#f2b347);--q:light-dark(#127a3e,#5fd48e);--d:light-dark(#b0432c,#ff8a75)}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(20px,3vw,40px) max(4vw,16px)}
+.wrap{max-width:1100px;margin:0 auto}
+h1,h2{font-family:Spectral,Georgia,serif;font-weight:500;letter-spacing:-.02em;line-height:1.1;margin:0}
+h1{font-size:clamp(28px,3.6vw,40px)}
+h2{font-size:22px}
+p{margin:0 0 10px;max-width:74ch}
+.soft{color:var(--soft);font-size:15px}
+.key{display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:center;background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:16px;margin:18px 0}
+.key ul{margin:0;padding-left:18px;font-size:15px}
+.key li{margin:4px 0}
+.qc{color:var(--q);font-weight:600}
+.dc{color:var(--d);font-weight:600}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 4px}
+button,select{font:500 15px Inter,sans-serif;min-height:44px;padding:0 16px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);border-radius:8px;cursor:pointer}
+button.go{background:var(--blue);border-color:var(--blue);color:#fff}
+button:focus-visible,select:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.lane{border-top:1px solid var(--rule);padding:18px 0}
+.lhead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 20px;align-items:baseline;margin-bottom:10px}
+.lname{font-family:Spectral,Georgia,serif;font-size:22px}
+.ldesc{color:var(--soft);font-size:15px}
+.count{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:15px;color:var(--soft)}
+.count b{font-size:24px;color:var(--ink);font-weight:600}
+.count.done b{color:var(--blue)}
+.grids{display:flex;flex-wrap:wrap;gap:22px}
+.gwrap{display:flex;flex-direction:column;gap:4px}
+.gtitle{font-size:13px;color:var(--soft)}
+.g{display:grid;grid-template-columns:20px repeat(8,20px);grid-auto-rows:20px;gap:2px;font:600 12px 'JetBrains Mono',ui-monospace,monospace}
+.h{display:flex;align-items:center;justify-content:center;border-radius:3px}
+.h.qh{color:var(--q)}
+.h.dh{color:var(--d)}
+.h.on{background:var(--now);color:#1a1200}
+.c{background:var(--empty);border-radius:3px}
+.c.f{background:var(--fill)}
+.c.n{background:var(--now)}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--soft);margin-top:6px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.foot{border-top:1px solid var(--rule)}
+@media(max-width:600px){.key{grid-template-columns:minmax(0,1fr)}.g{grid-template-columns:16px repeat(8,16px);grid-auto-rows:16px;font-size:11px}}
+</style>
+</head>
+<body>
+<div style="padding:10px max(4vw,16px);border-bottom:1px solid var(--rule);font:500 15px Inter,system-ui,sans-serif"><a href="../#homology-try" style="color:inherit;text-decoration:none">&larr; Back to Faster Homology Search</a><span style="opacity:.5;margin:0 10px">|</span><a href="../" style="color:inherit;text-decoration:none;opacity:.75">Timothy Gavris portfolio</a></div>
+<header class="band" style="padding-bottom:0"><div class="wrap">
+<h1>How A1 and A2 make Smith-Waterman faster</h1>
+<p class="soft" style="margin-top:10px">Comparing two proteins means filling a grid of scores. Here, your protein is compared with three database proteins, so there are three grids. The baseline, A1 and A2 fill exactly the same squares and get exactly the same scores. They differ only in how many squares they fill per step.</p>
+
+<div class="key">
+<div class="g" aria-label="Example grid showing the axes" style="pointer-events:none">
+<div></div><div class="h dh">M</div><div class="h dh">K</div><div class="h dh">T</div><div class="h dh">S</div><div class="h dh">Y</div><div class="h dh">I</div><div class="h dh">A</div><div class="h dh">K</div>
+<div class="h qh">M</div><div class="c f"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div>
+<div class="h qh">K</div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div>
+<div class="h qh">T</div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div>
+<div class="h qh">A</div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div>
+<div class="h qh">Y</div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c"></div>
+</div>
+<ul>
+<li><span class="qc">Down the left side: your protein</span> (MKTAY, 5 letters). Each <b>row</b> is one of its letters.</li>
+<li><span class="dc">Across the top: one database protein</span> (8 letters). Each <b>column</b> is one of its letters. Each grid has a different database protein.</li>
+<li><b>Each square</b> lines up one letter of your protein with one letter of the database protein and stores the best alignment score ending there. The shaded square here is M against M.</li>
+<li>In the real project, a search has 1,000 grids (one per database protein), each about 230 &times; 230 squares.</li>
+</ul>
+</div>
+</div></header>
+
+<main class="band" style="padding-top:8px"><div class="wrap">
+<div class="bar">
+<button class="go" id="play" type="button">Play</button>
+<button id="step" type="button">Step</button>
+<button id="reset" type="button">Reset</button>
+<label for="speed" style="font-size:14px;color:var(--soft);margin-left:6px">Speed</label>
+<select id="speed"><option value="260">Slow</option><option value="120" selected>Normal</option><option value="40">Fast</option></select>
+</div>
+<div class="legend">
+<span><span class="sw" style="background:var(--now)"></span>Being filled in this step (and the letters being compared)</span>
+<span><span class="sw" style="background:var(--fill)"></span>Already filled</span>
+<span><span class="sw" style="background:var(--empty)"></span>Not filled yet</span>
+</div>
+<div id="lanes"></div>
+</div></main>
+
+<footer class="band foot"><div class="wrap">
+<h2>What this shows, at real size</h2>
+<p>All three methods give identical scores. The difference is the number of steps. In the real search (one 291-letter query against 1,000 proteins), the baseline takes about 66.8 million steps, one per square. A2 takes 4,656 steps: 291 rows &times; 16 batches of 64 proteins. That count comes from <span style="font-family:'JetBrains Mono',monospace">verify_yourself.py</span>. Each A2 step does more work, so the measured speed-up is 45&times;, not the full drop in steps.</p>
+<p class="soft">A1 is based on SWIPE (Rognes, 2011): one square for many database proteins at once. A2 adds the scan-based reformulation (Khajeh-Saeed, Poole &amp; Perot, 2010): a whole row at once.</p>
+</div></footer>
+
+<script>
+{
+const Q = 'MKTAY';
+const DB = [
+  {name: 'Database protein 1', seq: 'MKTSYIAK'},
+  {name: 'Database protein 2', seq: 'GWDPMKTA'},
+  {name: 'Database protein 3', seq: 'LVKHEAYT'}
+];
+const R = Q.length, C = 8, P = DB.length;
+const LANES = [
+  {k: 'base', name: 'Baseline', desc: 'One square at a time, one database protein at a time.', total: R * C * P},
+  {k: 'a1', name: 'A1', desc: 'One square at a time, but for all database proteins at once (SWIPE).', total: R * C},
+  {k: 'a2', name: 'A2', desc: 'One whole row (one letter of your protein) at a time, for all database proteins at once.', total: R}
+];
+const $ = id => document.getElementById(id);
+
+const gridHTML = (k, p) => {
+  let h = '<div></div>' + [...DB[p].seq].map((ch, j) => `<div class="h dh" data-col="${j}">${ch}</div>`).join('');
+  for (let i = 0; i < R; i++) {
+    h += `<div class="h qh" data-row="${i}">${Q[i]}</div>` + Array.from({length: C}, (_, j) => `<div class="c" data-i="${i}" data-j="${j}"></div>`).join('');
+  }
+  return `<div class="gwrap"><div class="gtitle">Your protein vs ${DB[p].name}</div><div class="g" id="${k}${p}">${h}</div></div>`;
+};
+$('lanes').innerHTML = LANES.map(l => `<section class="lane" aria-label="${l.name}"><div class="lhead"><div><div class="lname">${l.name}</div><div class="ldesc">${l.desc}</div></div><div class="count" id="${l.k}c"><b id="${l.k}n">0</b> of ${l.total} steps</div></div><div class="grids">${[0, 1, 2].map(p => gridHTML(l.k, p)).join('')}</div></section>`).join('');
+
+let t = 0, timer = null;
+const MAX = R * C * P;
+
+const state = (k, s, p, i, j) => {
+  const cell = i * C + j;
+  if (k === 'base') { const idx = p * R * C + cell; return idx < s - 1 ? 'f' : idx === s - 1 ? 'n' : ''; }
+  if (k === 'a1') return cell < s - 1 ? 'f' : cell === s - 1 ? 'n' : '';
+  return i < s - 1 ? 'f' : i === s - 1 ? 'n' : '';
+};
+
+const paint = () => {
+  LANES.forEach(l => {
+    const s = Math.min(t, l.total), live = t <= l.total;
+    $(l.k + 'n').textContent = s;
+    $(l.k + 'c').classList.toggle('done', s === l.total);
+    for (let p = 0; p < P; p++) {
+      const g = $(l.k + p);
+      const rowsOn = new Set(), colsOn = new Set();
+      g.querySelectorAll('.c').forEach(c => {
+        const i = +c.dataset.i, j = +c.dataset.j;
+        let st = state(l.k, s, p, i, j);
+        if (st === 'n' && !live) st = 'f';
+        c.className = 'c' + (st ? ' ' + st : '');
+        if (st === 'n') { rowsOn.add(i); colsOn.add(j); }
+      });
+      g.querySelectorAll('.h[data-row]').forEach(h => h.classList.toggle('on', rowsOn.has(+h.dataset.row)));
+      g.querySelectorAll('.h[data-col]').forEach(h => h.classList.toggle('on', colsOn.has(+h.dataset.col)));
+    }
+  });
+};
+
+const stop = () => { clearInterval(timer); timer = null; $('play').textContent = t >= MAX ? 'Play again' : 'Play'; };
+const tick = () => { if (t >= MAX) { stop(); return; } t++; paint(); if (t >= MAX) stop(); };
+const start = () => { if (t >= MAX) { t = 0; paint(); } timer = setInterval(tick, +$('speed').value); $('play').textContent = 'Pause'; };
+
+$('play').addEventListener('click', () => timer ? stop() : start());
+$('step').addEventListener('click', () => { if (timer) stop(); tick(); });
+$('reset').addEventListener('click', () => { stop(); t = 0; paint(); $('play').textContent = 'Play'; });
+$('speed').addEventListener('change', () => { if (timer) { clearInterval(timer); timer = setInterval(tick, +$('speed').value); } });
+paint();
+}
+</script>
+</body>
+</html>

@@ -90,6 +90,7 @@ figcaption{font-size:13px;color:var(--soft);margin-top:6px}
 .kpis b.r{display:inline-block;background:var(--lav);padding:2px 8px;border-radius:4px;color:#0b0b0f}
 .kpis span{font-size:14px;color:var(--soft)}
 .try{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:8px 0 30px}
+.try.three{grid-template-columns:repeat(3,minmax(0,1fr))}
 .try a{display:flex;flex-direction:column;gap:6px;text-decoration:none;color:inherit;border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:var(--bg)}
 .try a:hover{border-color:var(--lav);box-shadow:0 0 0 2px var(--lav)}
 .try img{aspect-ratio:16/9;object-fit:cover;object-position:top;width:100%;border-bottom:1px solid var(--rule)}
@@ -111,9 +112,9 @@ figcaption{font-size:13px;color:var(--soft);margin-top:6px}
 .refs span{display:block;color:var(--soft);font-size:14px;margin-top:2px}
 .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:36px}
 .note{font-size:14px;color:var(--soft)}
-@media(max-width:980px){.feat{grid-row:auto}.feat .ph{aspect-ratio:16/9;flex:none;min-height:0}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:980px){.try.three{grid-template-columns:repeat(2,minmax(0,1fr))}.feat{grid-row:auto}.feat .ph{aspect-ratio:16/9;flex:none;min-height:0}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:860px){.top .wrap,.dgrid,.two{grid-template-columns:minmax(0,1fr)}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.contact{flex-direction:column;align-items:center;gap:6px}.contact>*+*{border-left:0}.grid,.skills,.try,.refs{grid-template-columns:minmax(0,1fr)}.feat,.wide{grid-column:auto}.feat .ph{aspect-ratio:4/3}.figs{grid-template-columns:minmax(0,1fr)}.row{grid-template-columns:8.5em minmax(0,1fr) 3.5em;font-size:14px}.plates{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.try.three{grid-template-columns:minmax(0,1fr)}.contact{flex-direction:column;align-items:center;gap:6px}.contact>*+*{border-left:0}.grid,.skills,.try,.refs{grid-template-columns:minmax(0,1fr)}.feat,.wide{grid-column:auto}.feat .ph{aspect-ratio:4/3}.figs{grid-template-columns:minmax(0,1fr)}.row{grid-template-columns:8.5em minmax(0,1fr) 3.5em;font-size:14px}.plates{grid-template-columns:minmax(0,1fr)}}
 @media(prefers-reduced-motion:no-preference){body.open #detail{animation:in .25s ease-out}@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}.card:hover{transform:translateY(-2px)}}
 </style>
 </head>
@@ -168,6 +169,7 @@ figcaption{font-size:13px;color:var(--soft);margin-top:6px}
 const FHS = 'protein-search/';
 const EXP = 'protein-explorer/';
 const QDX = 'quantum-dot-explorer/';
+const A12 = 'a1-a2-animation/';
 const MISX = 'mis-cv-simulator/';
 
 
@@ -240,10 +242,11 @@ const homology = () => `
 <div><b class="r">98.0%</b><span>of exhaustive-search hits still found</span></div>
 </div>
 <h2 id="try">Try it</h2>
-<p class="note">Both pages run live in the browser.</p>
-<div class="try">
+<p class="note">All three pages run live in the browser.</p>
+<div class="try three">
 <a href="${FHS}"><img src="img/fhs-results.jpg" alt="Results page with the speed versus hits-kept chart"><div class="tx"><b>Results page</b><p class="note" style="margin:4px 0 6px">Move the prefilter settings and every chart updates: speed against hits kept, which relatives are lost, and how the advantage scales to 20,000 proteins.</p><span class="go">Open the results page &rarr;</span></div></a>
 <a href="${EXP}"><img src="img/explorer-search.jpg" alt="Protein Search Explorer showing the top matches for a test protein"><div class="tx"><b>Protein Search Explorer</b><p class="note" style="margin:4px 0 6px">Pick or paste a protein, search the 1,000-protein test database, then open any match to see the alignment grid and the best alignment letter by letter.</p><span class="go">Open the explorer &rarr;</span></div></a>
+<a href="${A12}"><img src="img/a1a2-animation.jpg" alt="Animation of the baseline, A1 and A2 filling comparison grids side by side"><div class="tx"><b>How A1 and A2 work</b><p class="note" style="margin:4px 0 6px">Watch the baseline, A1 and A2 fill the same comparison grids side by side, and see why A2 needs far fewer steps for identical scores.</p><span class="go">Open the animation &rarr;</span></div></a>
 </div>
 <div class="two">
 <div>
