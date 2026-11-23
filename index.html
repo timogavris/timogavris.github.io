@@ -239,7 +239,7 @@ const homology = () => `
 <div><b>191&times;</b><span>faster with the prefilter (0.061 s per query)</span></div>
 <div><b class="r">98.0%</b><span>of exhaustive-search hits still found</span></div>
 </div>
-<h2>Try it</h2>
+<h2 id="try">Try it</h2>
 <p class="note">Both pages run live in the browser.</p>
 <div class="try">
 <a href="${FHS}"><img src="img/fhs-results.jpg" alt="Results page with the speed versus hits-kept chart"><div class="tx"><b>Results page</b><p class="note" style="margin:4px 0 6px">Move the prefilter settings and every chart updates: speed against hits kept, which relatives are lost, and how the advantage scales to 20,000 proteins.</p><span class="go">Open the results page &rarr;</span></div></a>
@@ -292,7 +292,7 @@ const misPage = it => `
 </div>
 <div class="plates">${it.labph.map(([f, c, w]) => `<figure class="${w ? 'w' : ''}"><img src="img/${f}.jpg" alt="${esc(c)}"><figcaption>${esc(c)}</figcaption></figure>`).join('')}</div>
 </div>
-<h2 style="margin-top:34px">MIS Capacitor C–V Simulator</h2>
+<h2 id="try" style="margin-top:34px">MIS Capacitor C–V Simulator</h2>
 <div class="dgrid" style="margin-top:8px">
 <div>
 <p>An interactive model of the C–V measurement made on the probe station. Sweeping the gate voltage moves the device through accumulation, depletion and inversion, with a cross-section showing where the charge sits at each voltage.</p>
@@ -324,7 +324,7 @@ const qdPage = () => `
 </div>
 <div class="plates"><figure class="w"><img src="img/qd-uv.jpg" alt="Quantum-dot samples fluorescing under UV excitation"><figcaption>Quantum-dot samples fluorescing under UV excitation</figcaption></figure></div>
 </div>
-<h2 style="margin-top:34px">Quantum Dot Colour Explorer</h2>
+<h2 id="try" style="margin-top:34px">Quantum Dot Colour Explorer</h2>
 <div class="dgrid" style="margin-top:8px">
 <div>
 <p>An interactive model of cadmium selenide (CdSe) quantum dots. Adjusting the particle diameter from 1.8 to 8.5 nm updates every figure on the page:</p>
@@ -348,7 +348,9 @@ const qdPage = () => `
 
 const order = items.map(i => i.id);
 const show = () => {
-  const id = location.hash.slice(1);
+  const raw = location.hash.slice(1);
+  const toTry = raw.endsWith('-try');
+  const id = toTry ? raw.slice(0, -4) : raw;
   const it = items.find(i => i.id === id);
   document.body.classList.toggle('open', !!it);
   if (!it) { document.title = 'Timothy Gavris Portfolio'; return; }
@@ -357,7 +359,8 @@ const show = () => {
   $('prev').href = '#' + order[(k - 1 + order.length) % order.length];
   $('next').href = '#' + order[(k + 1) % order.length];
   document.title = it.title + ' | Timothy Gavris';
-  window.scrollTo(0, 0);
+  const t = toTry && document.getElementById('try');
+  if (t) requestAnimationFrame(() => t.scrollIntoView({block: 'start'})); else window.scrollTo(0, 0);
 };
 document.querySelectorAll('.card').forEach(c => c.addEventListener('click', () => { location.hash = c.dataset.id; }));
 $('back').addEventListener('click', e => { e.preventDefault(); location.hash = ''; document.title = 'Timothy Gavris Portfolio'; });
